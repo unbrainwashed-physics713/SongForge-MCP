@@ -3,11 +3,17 @@
 DiffSinger is not pip-installable — inference happens by invoking its own
 scripts/infer.py inside a separately-cloned checkout (see
 docs/INSTALLATION.md for how that checkout gets set up). This module owns
-the two-stage subprocess invocation (variance -> acoustic) and turns
-process failures into typed VocalSynthMCPErrors. The exact output-file
-naming convention below (infer_out/{render_id}.wav) needs confirming
-against real DiffSinger CLI behavior during Task 14's manual verification
-— fix in one place here if it differs.
+the two-stage subprocess invocation and turns process failures into typed
+VocalSynthMCPErrors.
+
+Confirmed against the real openvpi/DiffSinger CLI (scripts/infer.py,
+checked 2026-07-21): this is a genuine two-stage *pipeline*, not two
+independent runs on the same input — `variance` reads our built .ds file
+and writes a new .ds file (with predicted duration/pitch/energy/etc.
+filled in) alongside it; `acoustic` then reads *that* file and writes the
+.wav. Both stages accept explicit --out/--title flags, which we always
+pass, so output paths are fully our own choice and never depend on
+DiffSinger's default same-directory/derived-filename behavior.
 """
 import json
 import os
@@ -33,9 +39,14 @@ class DiffSingerClient:
                 "valid directory. See docs/INSTALLATION.md.",
             )
 
-    def _run_stage(self, stage: str, ds_path: str, experiment: str, timeout: float) -> tuple[str, str]:
+    def _run_stage(
+        self, stage: str, ds_path: str, experiment: str, out_dir: str, title: str, timeout: float
+    ) -> tuple[str, str]:
         script = os.path.join(self.diffsinger_home, "scripts", "infer.py")
-        cmd = ["python", script, stage, ds_path, "--exp", experiment]
+        cmd = [
+            "python", script, stage, ds_path,
+            "--exp", experiment, "--out", out_dir, "--title", title,
+        ]
         try:
             result = subprocess.run(
                 cmd, cwd=self.diffsinger_home, capture_output=True, text=True,
@@ -75,12 +86,25 @@ class DiffSingerClient:
             json.dump([ds_entry], f)
 
         warnings: list[str] = []
-        stdout, stderr = self._run_stage("variance", ds_path, experiment, Timeouts.VARIANCE_STAGE)
+        variance_title = f"{render_id}_variance"
+        stdout, stderr = self._run_stage(
+            "variance", ds_path, experiment, ds_dir, variance_title, Timeouts.VARIANCE_STAGE
+        )
         warnings += parse_stage_output(stdout, stderr, "variance")
-        stdout, stderr = self._run_stage("acoustic", ds_path, experiment, Timeouts.ACOUSTIC_STAGE)
+
+        variance_ds_path = os.path.join(ds_dir, f"{variance_title}.ds")
+        if not os.path.isfile(variance_ds_path):
+            raise VocalSynthMCPError(
+                ErrorCode.VARIANCE_STAGE_FAILED,
+                f"variance stage reported success but no output .ds found at {variance_ds_path}",
+            )
+
+        stdout, stderr = self._run_stage(
+            "acoustic", variance_ds_path, experiment, ds_dir, render_id, Timeouts.ACOUSTIC_STAGE
+        )
         warnings += parse_stage_output(stdout, stderr, "acoustic")
 
-        wav_path = os.path.join(self.diffsinger_home, "infer_out", f"{render_id}.wav")
+        wav_path = os.path.join(ds_dir, f"{render_id}.wav")
         if not os.path.isfile(wav_path):
             raise VocalSynthMCPError(
                 ErrorCode.SYNTHESIS_FAILED,
