@@ -31,6 +31,9 @@ htmlcov/
 .claude/
 .mcp.json
 
+# Worktrees
+.worktrees/
+
 # Model weights and generated audio — large, local-only
 *.ckpt
 *.pt
