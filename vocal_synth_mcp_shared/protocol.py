@@ -47,6 +47,16 @@ def validate_notes(notes: list[NoteEvent]) -> None:
                 ErrorCode.INVALID_PARAMETER,
                 f"note {i}: duration_beats must be > 0, got {note.duration_beats}",
             )
+        if note.pitch == -1 and note.lyric:
+            raise VocalSynthMCPError(
+                ErrorCode.INVALID_PARAMETER,
+                f"note {i}: a rest (pitch=-1) must not have a lyric",
+            )
+        if note.pitch != -1 and not note.lyric:
+            raise VocalSynthMCPError(
+                ErrorCode.INVALID_PARAMETER,
+                f"note {i}: a pitched note must have a lyric (use pitch=-1 for a rest)",
+            )
 
 
 def build_ds_file(
@@ -68,7 +78,15 @@ def build_ds_file(
 
     from g2p_en import G2p
 
-    g2p = G2p()
+    g2p = None
+    first_lyric = next((note.lyric for note in notes if note.lyric), None)
+    if first_lyric is not None:
+        try:
+            g2p = G2p()
+        except Exception as e:
+            raise VocalSynthMCPError(
+                ErrorCode.PHONEME_NOT_FOUND, f"phoneme conversion failed for lyric {first_lyric!r}: {e}"
+            ) from e
 
     note_seq: list[str] = []
     note_dur: list[str] = []
@@ -79,7 +97,12 @@ def build_ds_file(
         note_seq.append("rest" if note.pitch == -1 else midi_to_note_name(note.pitch))
         note_dur.append(str(round(_beats_to_seconds(note.duration_beats, bpm), 6)))
         if note.lyric:
-            phonemes = [p for p in g2p(note.lyric) if p.strip()]
+            try:
+                phonemes = [p for p in g2p(note.lyric) if p.strip()]
+            except Exception as e:
+                raise VocalSynthMCPError(
+                    ErrorCode.PHONEME_NOT_FOUND, f"phoneme conversion failed for lyric {note.lyric!r}: {e}"
+                ) from e
             if not phonemes:
                 raise VocalSynthMCPError(
                     ErrorCode.PHONEME_NOT_FOUND,
@@ -121,5 +144,10 @@ def parse_stage_output(stdout: str, stderr: str, stage: str) -> list[str]:
 
 
 def measure_wav_duration_seconds(wav_path: str) -> float:
-    with wave.open(wav_path, "rb") as wf:
-        return wf.getnframes() / wf.getframerate()
+    try:
+        with wave.open(wav_path, "rb") as wf:
+            return wf.getnframes() / wf.getframerate()
+    except Exception as e:
+        raise VocalSynthMCPError(
+            ErrorCode.SYNTHESIS_FAILED, f"could not read rendered wav at {wav_path}: {e}"
+        ) from e

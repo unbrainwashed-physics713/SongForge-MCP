@@ -48,6 +48,23 @@ def test_validate_notes_rejects_zero_duration():
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
 
+def test_validate_notes_rejects_rest_with_lyric():
+    notes = [NoteEvent(pitch=-1, duration_beats=1.0, lyric="hi")]
+    with pytest.raises(VocalSynthMCPError) as exc_info:
+        validate_notes(notes)
+    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+
+
+def test_validate_notes_rejects_pitched_note_without_lyric():
+    notes = [
+        NoteEvent(pitch=60, duration_beats=1.0, lyric="hi"),
+        NoteEvent(pitch=62, duration_beats=1.0, lyric=None),
+    ]
+    with pytest.raises(VocalSynthMCPError) as exc_info:
+        validate_notes(notes)
+    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+
+
 def test_validate_notes_accepts_a_valid_sequence():
     notes = [
         NoteEvent(pitch=60, duration_beats=1.0, lyric="hel"),
@@ -103,3 +120,10 @@ def test_measure_wav_duration_seconds(tmp_path):
         wf.setframerate(framerate)
         wf.writeframes(b"\x00\x00" * framerate)  # exactly 1 second
     assert measure_wav_duration_seconds(path) == pytest.approx(1.0)
+
+
+def test_measure_wav_duration_seconds_raises_on_missing_file(tmp_path):
+    path = str(tmp_path / "does_not_exist.wav")
+    with pytest.raises(VocalSynthMCPError) as exc_info:
+        measure_wav_duration_seconds(path)
+    assert exc_info.value.code == ErrorCode.SYNTHESIS_FAILED
