@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Claude
+.claude/
+.mcp.json
+
+# Model weights and generated audio — large, local-only
+*.ckpt
+*.pt
+*.pth
+*.onnx
+voicebanks/
+output/
+*.wav
+*.mp3
+
+# Secrets
+.env
+.env.*
