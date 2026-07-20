@@ -9,9 +9,6 @@ description = "MCP server for local singing-voice synthesis (melody + lyrics -> 
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.10"
-# Dependencies intentionally left unpinned — the DiffSinger integration
-# and exact package set aren't decided yet. See docs/2026-07-21-design.md
-# "Open questions" #4 before filling this in.
 dependencies = [
     "mcp[cli]>=1.0.0",
 ]
@@ -25,5 +22,9 @@ dev = [
 [project.scripts]
 vocal-synth-mcp = "vocal_synth_mcp.main:main"
 
+[tool.hatch.build.targets.wheel]
+packages = ["vocal_synth_mcp", "vocal_synth_mcp_shared"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
