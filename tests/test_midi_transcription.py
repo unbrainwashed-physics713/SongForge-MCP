@@ -10,7 +10,7 @@ from songforge_mcp.midi_transcription import (
     split_midi_by_register,
     transcribe_to_midi,
 )
-from songforge_mcp_shared.error_codes import VocalSynthMCPError
+from songforge_mcp_shared.error_codes import SongForgeMCPError
 
 
 def _fake_midi_data():
@@ -150,7 +150,7 @@ def test_get_midi_notes_offset_past_end_returns_empty_page(tmp_path):
 
 def test_transcribe_to_midi_wraps_prediction_failure():
     with patch("songforge_mcp.midi_transcription.predict", side_effect=RuntimeError("model exploded")):
-        with pytest.raises(VocalSynthMCPError, match="MIDI transcription failed"):
+        with pytest.raises(SongForgeMCPError, match="MIDI transcription failed"):
             transcribe_to_midi("input.wav", "out.mid")
 
 

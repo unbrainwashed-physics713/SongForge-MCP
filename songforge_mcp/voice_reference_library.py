@@ -13,7 +13,7 @@ import os
 import re
 
 from songforge_mcp_shared.constants import Paths, ensure_private_dir
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import measure_wav_duration_seconds
 
 # A commonly cited practical floor for a usable voice-conversion/SVC
@@ -37,7 +37,7 @@ def slugify_voice_name(name: str, max_length: int = 60) -> str:
 def voice_dir(voice_name: str) -> str:
     slug = slugify_voice_name(voice_name)
     if not slug:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER, f"voice_name {voice_name!r} has no usable characters"
         )
     return os.path.join(Paths.REFERENCE_VOICES_DIR, slug)

@@ -9,7 +9,7 @@ from songforge_mcp.audio_analysis import (
     detect_key,
     measure_vocal_pitch_range,
 )
-from songforge_mcp_shared.error_codes import VocalSynthMCPError
+from songforge_mcp_shared.error_codes import SongForgeMCPError
 
 _NOTE_FREQS = {
     "C": 261.63, "C#": 277.18, "D": 293.66, "D#": 311.13, "E": 329.63, "F": 349.23,
@@ -100,7 +100,7 @@ def test_measure_vocal_pitch_range_rejects_silence(tmp_path):
     path = tmp_path / "silence.wav"
     sf.write(str(path), np.zeros(22050 * 2), 22050)
 
-    with pytest.raises(VocalSynthMCPError, match="no voiced pitch"):
+    with pytest.raises(SongForgeMCPError, match="no voiced pitch"):
         measure_vocal_pitch_range(str(path))
 
 

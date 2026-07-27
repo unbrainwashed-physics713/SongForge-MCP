@@ -74,7 +74,7 @@ does not wait for generation to finish.
 { "job_id": "5e9d2b3a-..." }
 ```
 
-**Raises** `VocalSynthMCPError` — `MISSING_PARAMETER` / `INVALID_PARAMETER`
+**Raises** `SongForgeMCPError` — `MISSING_PARAMETER` / `INVALID_PARAMETER`
 (empty or malformed caption/lyrics, both reference sources given at
 once, `reference_audio_path` doesn't exist or isn't a real audio file,
 `output_format` isn't one of the supported values). Validation happens
@@ -124,7 +124,7 @@ On `"complete"`, the rendered track is also returned as playable audio (a
 second list item) — the `note` field exists because not every MCP client
 renders that inline yet; `audio_path` is always a reliable fallback.
 
-**Raises** `VocalSynthMCPError` — `FILE_NOT_FOUND` (unrecognized `job_id`
+**Raises** `SongForgeMCPError` — `FILE_NOT_FOUND` (unrecognized `job_id`
 — jobs live in memory only and don't survive a server restart).
 
 ## `split_vocal_stems(audio_path) -> list`
@@ -156,7 +156,7 @@ Separation quality is good but not perfect — some bleed from
 instrumentation into the vocal stem is an observed limitation of the
 current separation model, not something a retry will fix.
 
-**Raises** `VocalSynthMCPError` — `FILE_NOT_FOUND`, `INVALID_PARAMETER`
+**Raises** `SongForgeMCPError` — `FILE_NOT_FOUND`, `INVALID_PARAMETER`
 (path exists but isn't inside this server's output folder, or isn't a
 real audio file), `SEPARATOR_NOT_CONFIGURED` (see
 [`docs/INSTALLATION.md`](INSTALLATION.md)), `SUBPROCESS_TIMEOUT`,

@@ -14,7 +14,7 @@
 - `mcp[cli]>=1.0.0` is the only required runtime dependency besides `g2p_en`; DiffSinger itself is never a Python dependency — it's a separately-cloned checkout invoked via subprocess (see design doc's "Technology" section).
 - Output is **vocal-only** — no backing instrumentation is ever generated or mixed in by this server.
 - No melody/lyric composition logic anywhere in this codebase — every tool takes fully explicit notes+lyrics. No auto-retry or auto-parameter-adjustment inside the server either — diagnostics are reported, retries are the calling LLM's decision.
-- All raised errors are `VocalSynthMCPError` carrying a specific `ErrorCode`, mirroring `Reaper-MCP`'s `ReaperMCPError`/`ErrorCode` pattern — never a bare `Exception` or generic message.
+- All raised errors are `SongForgeMCPError` carrying a specific `ErrorCode`, mirroring `Reaper-MCP`'s `ReaperMCPError`/`ErrorCode` pattern — never a bare `Exception` or generic message.
 - Repo layout mirrors `Reaper-MCP`/`AudacityMCP`: `songforge_mcp/` (tools, auto-registered), `songforge_mcp_shared/` (constants, error codes, protocol), `docs/`, `tests/`, `install.bat`/`install.sh`.
 - Source of truth for all of the above: `docs/2026-07-21-design.md` in this repo.
 
@@ -28,7 +28,7 @@
 - Test: `tests/test_error_codes.py`
 
 **Interfaces:**
-- Produces: `ErrorCode` (IntEnum) with members `SUBPROCESS_FAILED=1000`, `SUBPROCESS_TIMEOUT=1001`, `DIFFSINGER_NOT_CONFIGURED=1002`, `SYNTHESIS_FAILED=2000`, `VARIANCE_STAGE_FAILED=2001`, `ACOUSTIC_STAGE_FAILED=2002`, `VALIDATION_FAILED=3000`, `INVALID_PARAMETER=3001`, `MISSING_PARAMETER=3002`, `NOTE_OUT_OF_RANGE=3003`, `PHONEME_NOT_FOUND=3004`, `LYRIC_NOTE_COUNT_MISMATCH=3005`, `VOICEBANK_NOT_FOUND=3006`, `VALUE_OUT_OF_RANGE=3007`. `VocalSynthMCPError(code: ErrorCode, message: str)` — every later task raises this, never a bare `Exception`.
+- Produces: `ErrorCode` (IntEnum) with members `SUBPROCESS_FAILED=1000`, `SUBPROCESS_TIMEOUT=1001`, `DIFFSINGER_NOT_CONFIGURED=1002`, `SYNTHESIS_FAILED=2000`, `VARIANCE_STAGE_FAILED=2001`, `ACOUSTIC_STAGE_FAILED=2002`, `VALIDATION_FAILED=3000`, `INVALID_PARAMETER=3001`, `MISSING_PARAMETER=3002`, `NOTE_OUT_OF_RANGE=3003`, `PHONEME_NOT_FOUND=3004`, `LYRIC_NOTE_COUNT_MISMATCH=3005`, `VOICEBANK_NOT_FOUND=3006`, `VALUE_OUT_OF_RANGE=3007`. `SongForgeMCPError(code: ErrorCode, message: str)` — every later task raises this, never a bare `Exception`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -36,17 +36,17 @@
 # tests/test_error_codes.py
 import pytest
 
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 def test_error_carries_code_and_message():
-    err = VocalSynthMCPError(ErrorCode.NOTE_OUT_OF_RANGE, "pitch 200 is not a valid MIDI note")
+    err = SongForgeMCPError(ErrorCode.NOTE_OUT_OF_RANGE, "pitch 200 is not a valid MIDI note")
     assert err.code == ErrorCode.NOTE_OUT_OF_RANGE
     assert err.message == "pitch 200 is not a valid MIDI note"
 
 
 def test_error_string_includes_code_name_and_value():
-    err = VocalSynthMCPError(ErrorCode.VOICEBANK_NOT_FOUND, "unknown voicebank 'nope'")
+    err = SongForgeMCPError(ErrorCode.VOICEBANK_NOT_FOUND, "unknown voicebank 'nope'")
     assert str(err) == "[VOICEBANK_NOT_FOUND (3006)] unknown voicebank 'nope'"
 
 
@@ -91,7 +91,7 @@ class ErrorCode(IntEnum):
     VALUE_OUT_OF_RANGE = 3007
 
 
-class VocalSynthMCPError(Exception):
+class SongForgeMCPError(Exception):
     def __init__(self, code: ErrorCode, message: str):
         self.code = code
         self.message = message
@@ -107,7 +107,7 @@ Expected: 3 passed
 
 ```bash
 git add songforge_mcp_shared/__init__.py songforge_mcp_shared/error_codes.py tests/test_error_codes.py
-git commit -m "feat: add typed VocalSynthMCPError/ErrorCode"
+git commit -m "feat: add typed SongForgeMCPError/ErrorCode"
 ```
 
 ---
@@ -221,7 +221,7 @@ git commit -m "feat: add shared paths/timeouts/safety-limit constants"
 - Modify: `pyproject.toml` — add `g2p_en>=2.1.0` to `dependencies`
 
 **Interfaces:**
-- Consumes: `MIN_MIDI_NOTE`, `MAX_MIDI_NOTE`, `MAX_NOTES_PER_CALL` from Task 2; `ErrorCode`, `VocalSynthMCPError` from Task 1.
+- Consumes: `MIN_MIDI_NOTE`, `MAX_MIDI_NOTE`, `MAX_NOTES_PER_CALL` from Task 2; `ErrorCode`, `SongForgeMCPError` from Task 1.
 - Produces: `NoteEvent(pitch: int, duration_beats: float, lyric: str | None)` dataclass; `midi_to_note_name(pitch: int) -> str`; `validate_notes(notes: list[NoteEvent]) -> None` (raises on problems); `build_ds_file(notes: list[NoteEvent], bpm: float, expressive_params: dict | None = None) -> dict`; `parse_stage_output(stdout: str, stderr: str, stage: str) -> list[str]`; `measure_wav_duration_seconds(wav_path: str) -> float`. Used by Tasks 4, 7, 9.
 
 - [ ] **Step 1: Write the failing tests**
@@ -232,7 +232,7 @@ import wave
 
 import pytest
 
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import (
     NoteEvent,
     build_ds_file,
@@ -252,28 +252,28 @@ def test_midi_to_note_name_sharp():
 
 
 def test_validate_notes_rejects_empty_list():
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_notes([])
     assert exc_info.value.code == ErrorCode.MISSING_PARAMETER
 
 
 def test_validate_notes_rejects_all_rests():
     notes = [NoteEvent(pitch=-1, duration_beats=1.0, lyric=None)]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_notes(notes)
     assert exc_info.value.code == ErrorCode.MISSING_PARAMETER
 
 
 def test_validate_notes_rejects_out_of_range_pitch():
     notes = [NoteEvent(pitch=200, duration_beats=1.0, lyric="hi")]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_notes(notes)
     assert exc_info.value.code == ErrorCode.NOTE_OUT_OF_RANGE
 
 
 def test_validate_notes_rejects_zero_duration():
     notes = [NoteEvent(pitch=60, duration_beats=0.0, lyric="hi")]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_notes(notes)
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
@@ -303,7 +303,7 @@ def test_build_ds_file_produces_matching_length_sequences():
 
 def test_build_ds_file_rejects_non_positive_bpm():
     notes = [NoteEvent(pitch=60, duration_beats=1.0, lyric="hi")]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         build_ds_file(notes, bpm=0.0)
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
@@ -365,7 +365,7 @@ import wave
 from dataclasses import dataclass
 
 from songforge_mcp_shared.constants import MAX_MIDI_NOTE, MAX_NOTES_PER_CALL, MIN_MIDI_NOTE
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 _MIDI_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -389,23 +389,23 @@ def _beats_to_seconds(beats: float, bpm: float) -> float:
 
 def validate_notes(notes: list[NoteEvent]) -> None:
     if not notes:
-        raise VocalSynthMCPError(ErrorCode.MISSING_PARAMETER, "notes must contain at least one note")
+        raise SongForgeMCPError(ErrorCode.MISSING_PARAMETER, "notes must contain at least one note")
     if len(notes) > MAX_NOTES_PER_CALL:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.VALUE_OUT_OF_RANGE,
             f"{len(notes)} notes exceeds the {MAX_NOTES_PER_CALL}-note limit per call",
         )
     if not any(n.lyric for n in notes):
-        raise VocalSynthMCPError(ErrorCode.MISSING_PARAMETER, "notes must include at least one sung (non-rest) note")
+        raise SongForgeMCPError(ErrorCode.MISSING_PARAMETER, "notes must include at least one sung (non-rest) note")
     for i, note in enumerate(notes):
         if note.pitch != -1 and not (MIN_MIDI_NOTE <= note.pitch <= MAX_MIDI_NOTE):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.NOTE_OUT_OF_RANGE,
                 f"note {i}: pitch {note.pitch} is outside the supported range "
                 f"{MIN_MIDI_NOTE}-{MAX_MIDI_NOTE}",
             )
         if note.duration_beats <= 0:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.INVALID_PARAMETER,
                 f"note {i}: duration_beats must be > 0, got {note.duration_beats}",
             )
@@ -426,7 +426,7 @@ def build_ds_file(
     """
     validate_notes(notes)
     if bpm <= 0:
-        raise VocalSynthMCPError(ErrorCode.INVALID_PARAMETER, f"bpm must be > 0, got {bpm}")
+        raise SongForgeMCPError(ErrorCode.INVALID_PARAMETER, f"bpm must be > 0, got {bpm}")
 
     from g2p_en import G2p
 
@@ -443,7 +443,7 @@ def build_ds_file(
         if note.lyric:
             phonemes = [p for p in g2p(note.lyric) if p.strip()]
             if not phonemes:
-                raise VocalSynthMCPError(
+                raise SongForgeMCPError(
                     ErrorCode.PHONEME_NOT_FOUND,
                     f"could not derive phonemes for lyric {note.lyric!r}",
                 )
@@ -509,7 +509,7 @@ git commit -m "feat: add .ds build/validate/parse protocol helpers"
 - Test: `tests/test_diffsinger_client.py`
 
 **Interfaces:**
-- Consumes: `Paths`, `Timeouts`, `ensure_private_dir` from Task 2; `ErrorCode`, `VocalSynthMCPError` from Task 1; `parse_stage_output` from Task 3.
+- Consumes: `Paths`, `Timeouts`, `ensure_private_dir` from Task 2; `ErrorCode`, `SongForgeMCPError` from Task 1; `parse_stage_output` from Task 3.
 - Produces: `DiffSingerClient(diffsinger_home: str | None = None)` with `.synthesize(ds_entry: dict, experiment: str) -> {"wav_path": str, "warnings": list[str]}`. Used by Task 9.
 
 - [ ] **Step 1: Write the failing tests**
@@ -523,7 +523,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from songforge_mcp.diffsinger_client import DiffSingerClient
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 def _make_checkout(tmp_path):
@@ -534,7 +534,7 @@ def _make_checkout(tmp_path):
 
 def test_synthesize_raises_when_not_configured():
     client = DiffSingerClient(diffsinger_home="")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         client.synthesize({"ph_seq": "HH AH0"}, experiment="test-exp")
     assert exc_info.value.code == ErrorCode.DIFFSINGER_NOT_CONFIGURED
 
@@ -545,7 +545,7 @@ def test_synthesize_raises_on_stage_timeout(tmp_path):
 
     with patch("songforge_mcp.diffsinger_client.subprocess.run") as mock_run:
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="infer.py", timeout=1.0)
-        with pytest.raises(VocalSynthMCPError) as exc_info:
+        with pytest.raises(SongForgeMCPError) as exc_info:
             client.synthesize({"ph_seq": "HH AH0"}, experiment="test-exp")
         assert exc_info.value.code == ErrorCode.SUBPROCESS_TIMEOUT
 
@@ -556,7 +556,7 @@ def test_synthesize_raises_on_nonzero_exit(tmp_path):
 
     with patch("songforge_mcp.diffsinger_client.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="RuntimeError: bad checkpoint")
-        with pytest.raises(VocalSynthMCPError) as exc_info:
+        with pytest.raises(SongForgeMCPError) as exc_info:
             client.synthesize({"ph_seq": "HH AH0"}, experiment="test-exp")
         assert exc_info.value.code == ErrorCode.VARIANCE_STAGE_FAILED
 
@@ -591,7 +591,7 @@ def test_synthesize_raises_when_acoustic_stage_produces_no_wav(tmp_path):
 
     with patch("songforge_mcp.diffsinger_client.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-        with pytest.raises(VocalSynthMCPError) as exc_info:
+        with pytest.raises(SongForgeMCPError) as exc_info:
             client.synthesize({"ph_seq": "HH AH0"}, experiment="test-exp")
         assert exc_info.value.code == ErrorCode.SYNTHESIS_FAILED
 ```
@@ -611,7 +611,7 @@ DiffSinger is not pip-installable — inference happens by invoking its own
 scripts/infer.py inside a separately-cloned checkout (see
 docs/INSTALLATION.md for how that checkout gets set up). This module owns
 the two-stage subprocess invocation (variance -> acoustic) and turns
-process failures into typed VocalSynthMCPErrors. The exact output-file
+process failures into typed SongForgeMCPErrors. The exact output-file
 naming convention below (infer_out/{render_id}.wav) needs confirming
 against real DiffSinger CLI behavior during Task 14's manual verification
 — fix in one place here if it differs.
@@ -623,7 +623,7 @@ import tempfile
 import uuid
 
 from songforge_mcp_shared.constants import Paths, Timeouts, ensure_private_dir
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import parse_stage_output
 
 
@@ -634,7 +634,7 @@ class DiffSingerClient:
 
     def _require_configured(self) -> None:
         if not self.diffsinger_home or not os.path.isdir(self.diffsinger_home):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.DIFFSINGER_NOT_CONFIGURED,
                 "SONGFORGE_DIFFSINGER_HOME is not set or does not point to a "
                 "valid directory. See docs/INSTALLATION.md.",
@@ -649,19 +649,19 @@ class DiffSingerClient:
                 timeout=timeout, check=False,
             )
         except subprocess.TimeoutExpired as e:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.SUBPROCESS_TIMEOUT,
                 f"DiffSinger {stage} stage exceeded {timeout}s timeout",
             ) from e
         except OSError as e:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.SUBPROCESS_FAILED,
                 f"failed to launch DiffSinger {stage} stage: {e}",
             ) from e
 
         if result.returncode != 0:
             code = ErrorCode.VARIANCE_STAGE_FAILED if stage == "variance" else ErrorCode.ACOUSTIC_STAGE_FAILED
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 code,
                 f"DiffSinger {stage} stage exited {result.returncode}: "
                 f"{result.stderr.strip()[-2000:]}",
@@ -689,7 +689,7 @@ class DiffSingerClient:
 
         wav_path = os.path.join(self.diffsinger_home, "infer_out", f"{render_id}.wav")
         if not os.path.isfile(wav_path):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.SYNTHESIS_FAILED,
                 f"acoustic stage reported success but no output wav found at {wav_path}",
             )
@@ -952,7 +952,7 @@ git commit -m "feat: add injected instructions doc for the calling LLM"
 - Test: `tests/test_validate_tools.py`
 
 **Interfaces:**
-- Consumes: `NoteEvent`, `validate_notes` from Task 3; `ErrorCode`, `VocalSynthMCPError` from Task 1.
+- Consumes: `NoteEvent`, `validate_notes` from Task 3; `ErrorCode`, `SongForgeMCPError` from Task 1.
 - Produces: MCP tool `validate_score(notes: list[dict], bpm: float) -> dict` registered via `register(mcp: FastMCP)`. Used by Task 10.
 
 - [ ] **Step 1: Write the failing tests**
@@ -965,7 +965,7 @@ import pytest
 from mcp.server.fastmcp import FastMCP
 
 from songforge_mcp.tools import validate_tools
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 def _register() -> FastMCP:
@@ -992,7 +992,7 @@ def test_validate_score_rejects_out_of_range_pitch():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("validate_score")
     notes = [{"pitch": 200, "duration_beats": 1.0, "lyric": "hi"}]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(notes=notes, bpm=120.0))
     assert exc_info.value.code == ErrorCode.NOTE_OUT_OF_RANGE
 
@@ -1001,7 +1001,7 @@ def test_validate_score_rejects_non_positive_bpm():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("validate_score")
     notes = [{"pitch": 60, "duration_beats": 1.0, "lyric": "hi"}]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(notes=notes, bpm=0.0))
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 ```
@@ -1019,7 +1019,7 @@ Create `songforge_mcp/tools/__init__.py` (empty file).
 # songforge_mcp/tools/validate_tools.py
 from mcp.server.fastmcp import FastMCP
 
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import NoteEvent, validate_notes
 
 
@@ -1038,7 +1038,7 @@ def register(mcp: FastMCP):
             bpm: Tempo in beats per minute.
         """
         if bpm <= 0:
-            raise VocalSynthMCPError(ErrorCode.INVALID_PARAMETER, f"bpm must be > 0, got {bpm}")
+            raise SongForgeMCPError(ErrorCode.INVALID_PARAMETER, f"bpm must be > 0, got {bpm}")
         note_events = [
             NoteEvent(pitch=n["pitch"], duration_beats=n["duration_beats"], lyric=n.get("lyric"))
             for n in notes
@@ -1160,7 +1160,7 @@ git commit -m "feat: add list_voicebanks MCP tool"
 - Test: `tests/test_synthesize_tools.py`
 
 **Interfaces:**
-- Consumes: `DiffSingerClient` from Task 4; `NoteEvent`, `build_ds_file`, `measure_wav_duration_seconds` from Task 3; `VOICEBANK_REGISTRY` from Task 5; `ErrorCode`, `VocalSynthMCPError` from Task 1.
+- Consumes: `DiffSingerClient` from Task 4; `NoteEvent`, `build_ds_file`, `measure_wav_duration_seconds` from Task 3; `VOICEBANK_REGISTRY` from Task 5; `ErrorCode`, `SongForgeMCPError` from Task 1.
 - Produces: MCP tool `synthesize_vocal(notes: list[dict], bpm: float, voicebank: str, expressive_params: dict | None = None) -> dict` registered via `register(mcp: FastMCP)`; module-level `_client: DiffSingerClient` (patched in tests). Used by Task 10.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1175,7 +1175,7 @@ import pytest
 from mcp.server.fastmcp import FastMCP
 
 from songforge_mcp.tools import synthesize_tools
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 def _write_silent_wav(path: str, seconds: float, framerate: int = 44100) -> None:
@@ -1197,7 +1197,7 @@ def test_synthesize_vocal_rejects_unknown_voicebank():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("synthesize_vocal")
     notes = [{"pitch": 60, "duration_beats": 1.0, "lyric": "hi"}]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(notes=notes, bpm=120.0, voicebank="does-not-exist"))
     assert exc_info.value.code == ErrorCode.VOICEBANK_NOT_FOUND
 
@@ -1208,7 +1208,7 @@ def test_synthesize_vocal_rejects_note_outside_voicebank_range():
     voicebank_id = next(iter(synthesize_tools.VOICEBANK_REGISTRY))
     vb = synthesize_tools.VOICEBANK_REGISTRY[voicebank_id]
     notes = [{"pitch": vb.max_midi_note + 1, "duration_beats": 1.0, "lyric": "hi"}]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(notes=notes, bpm=120.0, voicebank=voicebank_id))
     assert exc_info.value.code == ErrorCode.NOTE_OUT_OF_RANGE
 
@@ -1248,7 +1248,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp.tools.s
 from mcp.server.fastmcp import FastMCP
 
 from songforge_mcp.diffsinger_client import DiffSingerClient
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import NoteEvent, build_ds_file, measure_wav_duration_seconds
 from songforge_mcp_shared.voicebanks import VOICEBANK_REGISTRY
 
@@ -1278,7 +1278,7 @@ def register(mcp: FastMCP):
                 predict them automatically.
         """
         if voicebank not in VOICEBANK_REGISTRY:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.VOICEBANK_NOT_FOUND,
                 f"unknown voicebank {voicebank!r}. Call list_voicebanks for valid ids.",
             )
@@ -1289,7 +1289,7 @@ def register(mcp: FastMCP):
         ]
         for i, note in enumerate(note_events):
             if note.pitch != -1 and not (vb.min_midi_note <= note.pitch <= vb.max_midi_note):
-                raise VocalSynthMCPError(
+                raise SongForgeMCPError(
                     ErrorCode.NOTE_OUT_OF_RANGE,
                     f"note {i}: pitch {note.pitch} is outside {voicebank}'s range "
                     f"{vb.min_midi_note}-{vb.max_midi_note}",
@@ -1646,7 +1646,7 @@ songforge_mcp/
 
 songforge_mcp_shared/
 ├── constants.py            # Paths, timeouts, safety limits
-├── error_codes.py          # VocalSynthMCPError + ErrorCode
+├── error_codes.py          # SongForgeMCPError + ErrorCode
 ├── protocol.py             # .ds build/validate/parse
 └── voicebanks.py           # Configured voicebank registry
 ```
@@ -1656,7 +1656,7 @@ songforge_mcp_shared/
 - **Composition stays out of this codebase.** Every tool takes fully
   explicit notes+lyrics. No melody/lyric generation, no auto-retry or
   auto-parameter-adjustment — see `docs/2026-07-21-design.md`.
-- **Typed errors.** `VocalSynthMCPError` + `ErrorCode` give the calling
+- **Typed errors.** `SongForgeMCPError` + `ErrorCode` give the calling
   LLM specific, machine-readable failure reasons instead of a generic
   message — same pattern as reaper-mcp's `ReaperMCPError`.
 - **Subprocess, not a library dependency.** DiffSinger isn't
@@ -1741,7 +1741,7 @@ reaper-mcp, same as any other stdio MCP server.
 Fast pre-check for a note+lyric sequence. Does not invoke DiffSinger.
 
 Returns `{"valid": true, "note_count": int, "sung_note_count": int, "total_duration_seconds": float}`
-or raises `VocalSynthMCPError` (`NOTE_OUT_OF_RANGE`, `INVALID_PARAMETER`,
+or raises `SongForgeMCPError` (`NOTE_OUT_OF_RANGE`, `INVALID_PARAMETER`,
 `MISSING_PARAMETER`).
 
 ## `list_voicebanks() -> dict`
@@ -1757,7 +1757,7 @@ Renders a vocal-only WAV stem.
 - `expressive_params`: optional `{"f0_seq"/"energy"/"breathiness"/"voicing"/"tension": str}` — omit for automatic prediction
 
 Returns `{"wav_path": str, "diagnostics": {"warnings": list[str], "requested_duration_seconds": float, "actual_duration_seconds": float}}`
-or raises `VocalSynthMCPError` (`VOICEBANK_NOT_FOUND`, `NOTE_OUT_OF_RANGE`,
+or raises `SongForgeMCPError` (`VOICEBANK_NOT_FOUND`, `NOTE_OUT_OF_RANGE`,
 `DIFFSINGER_NOT_CONFIGURED`, `SUBPROCESS_TIMEOUT`, `VARIANCE_STAGE_FAILED`,
 `ACOUSTIC_STAGE_FAILED`, `SYNTHESIS_FAILED`).
 ```
@@ -1772,7 +1772,7 @@ or raises `VocalSynthMCPError` (`VOICEBANK_NOT_FOUND`, `NOTE_OUT_OF_RANGE`,
   defines `register(mcp)`. It's auto-discovered — no registry to edit by
   hand, other than adding the module name to `tool_registry.py`'s
   `_EXPECTED_MODULES` (a test enforces this stays in sync).
-- Every raised error must be a `VocalSynthMCPError` with a specific
+- Every raised error must be a `SongForgeMCPError` with a specific
   `ErrorCode` from `songforge_mcp_shared/error_codes.py` — never a bare
   exception.
 - No composition logic in this codebase — every tool takes fully explicit

@@ -7,7 +7,7 @@ from songforge_mcp.separator_client import SeparatorClient
 from songforge_mcp.shared_state import jobs as _jobs
 from songforge_mcp.voice_reference_library import get_voice_library_status, save_voice_clip
 from songforge_mcp.youtube_reference import YouTubeReferenceClient
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 _youtube_client = YouTubeReferenceClient()
 _separator_client = SeparatorClient()
@@ -84,7 +84,7 @@ def register(mcp: FastMCP):
                 job.progress = 1.0
                 job.message = "Voice reference prepared"
                 job.status = "complete"
-            except VocalSynthMCPError as e:
+            except SongForgeMCPError as e:
                 job.error = f"[{e.code.name}] {e.message}"
                 job.status = "error"
             except Exception as e:

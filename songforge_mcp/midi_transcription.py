@@ -24,7 +24,7 @@ import pretty_midi
 from basic_pitch import ICASSP_2022_MODEL_PATH
 from basic_pitch.inference import predict
 
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 def _onset_polyphony(notes: list) -> dict:
@@ -178,7 +178,7 @@ def transcribe_to_midi(audio_path: str, output_path: str) -> dict:
     try:
         _model_output, midi_data, note_events = predict(audio_path, ICASSP_2022_MODEL_PATH)
     except Exception as e:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.SYNTHESIS_FAILED, f"MIDI transcription failed for {audio_path!r}: {e}"
         ) from e
 

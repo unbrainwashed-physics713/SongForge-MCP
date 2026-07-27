@@ -4,7 +4,7 @@ import pytest
 from mcp.server.fastmcp import FastMCP
 
 from songforge_mcp.tools import generate_tools
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 class _StubContext:
@@ -26,7 +26,7 @@ def _register() -> FastMCP:
 def test_generate_vocal_track_rejects_empty_caption():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("generate_vocal_track")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(caption="", lyrics="[verse]\nsome words", ctx=_StubContext()))
     assert exc_info.value.code == ErrorCode.MISSING_PARAMETER
 
@@ -34,7 +34,7 @@ def test_generate_vocal_track_rejects_empty_caption():
 def test_generate_vocal_track_rejects_lyrics_without_structure_tags():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("generate_vocal_track")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(caption="melodic dubstep", lyrics="no structure tags here", ctx=_StubContext()))
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
@@ -42,7 +42,7 @@ def test_generate_vocal_track_rejects_lyrics_without_structure_tags():
 def test_generate_vocal_track_rejects_both_reference_sources_at_once():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("generate_vocal_track")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(
             caption="melodic dubstep",
             lyrics="[verse]\nsome words",
@@ -56,7 +56,7 @@ def test_generate_vocal_track_rejects_both_reference_sources_at_once():
 def test_generate_vocal_track_rejects_both_remix_sources_at_once():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("generate_vocal_track")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(
             caption="melodic dubstep",
             lyrics="[verse]\nsome words",
@@ -70,7 +70,7 @@ def test_generate_vocal_track_rejects_both_remix_sources_at_once():
 def test_generate_vocal_track_rejects_remix_and_reference_together():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("generate_vocal_track")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(
             caption="melodic dubstep",
             lyrics="[verse]\nsome words",
@@ -84,7 +84,7 @@ def test_generate_vocal_track_rejects_remix_and_reference_together():
 def test_generate_vocal_track_rejects_out_of_range_remix_strength():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("generate_vocal_track")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(
             caption="melodic dubstep",
             lyrics="[verse]\nsome words",
@@ -118,7 +118,7 @@ def test_generate_vocal_track_returns_immediately_with_a_job_id(monkeypatch):
 def test_check_vocal_track_status_rejects_unknown_job_id():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("check_vocal_track_status")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(job_id="does-not-exist"))
     assert exc_info.value.code == ErrorCode.FILE_NOT_FOUND
 
@@ -248,7 +248,7 @@ def test_check_vocal_track_status_returns_running_immediately_when_wait_seconds_
 def test_generate_vocal_track_rejects_invalid_output_format():
     mcp = _register()
     tool = mcp._tool_manager.get_tool("generate_vocal_track")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(
             caption="melodic dubstep",
             lyrics="[verse]\nsome words",
@@ -290,7 +290,7 @@ def test_generate_vocal_track_job_reports_error_status(monkeypatch):
     status_tool = mcp._tool_manager.get_tool("check_vocal_track_status")
 
     async def failing_generate(**kwargs):
-        raise VocalSynthMCPError(ErrorCode.SYNTHESIS_FAILED, "boom")
+        raise SongForgeMCPError(ErrorCode.SYNTHESIS_FAILED, "boom")
 
     monkeypatch.setattr(generate_tools._client, "generate", failing_generate)
 

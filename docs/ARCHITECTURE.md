@@ -287,7 +287,7 @@ songforge_mcp/
 
 songforge_mcp_shared/
 ├── constants.py              # Paths, timeouts, safety limits
-├── error_codes.py            # VocalSynthMCPError + ErrorCode
+├── error_codes.py            # SongForgeMCPError + ErrorCode
 └── protocol.py                # Input validation, output helpers
 ```
 
@@ -296,7 +296,7 @@ songforge_mcp_shared/
 - **Composition stays out of this codebase.** This server renders what
   it's given; deciding what to write is the calling model's job, done in
   conversation with the user before any tool is called.
-- **Typed errors.** `VocalSynthMCPError` + `ErrorCode` give the calling
+- **Typed errors.** `SongForgeMCPError` + `ErrorCode` give the calling
   model specific, machine-readable failure reasons rather than a generic
   message.
 - **External tools stay external.** Neither ACE-Step nor audio-separator

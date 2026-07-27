@@ -5,7 +5,7 @@ import pytest
 import soundfile as sf
 
 from songforge_mcp_shared import constants
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import (
     measure_wav_duration_seconds,
     validate_audio_file_path,
@@ -25,7 +25,7 @@ def _write_wav(path):
 
 
 def test_validate_caption_rejects_empty():
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_caption("")
     assert exc_info.value.code == ErrorCode.MISSING_PARAMETER
 
@@ -35,13 +35,13 @@ def test_validate_caption_accepts_normal_text():
 
 
 def test_validate_lyrics_rejects_empty():
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_lyrics("")
     assert exc_info.value.code == ErrorCode.MISSING_PARAMETER
 
 
 def test_validate_lyrics_requires_structure_tag():
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_lyrics("just some words with no structure tags at all")
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
@@ -76,13 +76,13 @@ def test_measure_wav_duration_seconds_handles_32bit_float_wav(tmp_path):
 
 
 def test_measure_wav_duration_seconds_raises_for_missing_file():
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         measure_wav_duration_seconds("does_not_exist.wav")
     assert exc_info.value.code == ErrorCode.SYNTHESIS_FAILED
 
 
 def test_validate_audio_file_path_rejects_missing_file(tmp_path):
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_audio_file_path(str(tmp_path / "nope.wav"), param_name="audio_path")
     assert exc_info.value.code == ErrorCode.FILE_NOT_FOUND
 
@@ -96,7 +96,7 @@ def test_validate_output_format_normalizes_case():
 
 
 def test_validate_output_format_rejects_unsupported_value():
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_output_format("ogg")
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
@@ -104,7 +104,7 @@ def test_validate_output_format_rejects_unsupported_value():
 def test_validate_audio_file_path_rejects_bad_extension(tmp_path):
     path = tmp_path / "not_audio.txt"
     path.write_text("hello")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_audio_file_path(str(path), param_name="audio_path")
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
@@ -112,7 +112,7 @@ def test_validate_audio_file_path_rejects_bad_extension(tmp_path):
 def test_validate_audio_file_path_rejects_renamed_non_audio_file(tmp_path):
     path = tmp_path / "fake.wav"
     path.write_text("this is not really a wav file")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_audio_file_path(str(path), param_name="audio_path")
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
@@ -142,6 +142,6 @@ def test_validate_output_dir_audio_path_rejects_file_outside_output_dir(tmp_path
     path = outside_dir / "sneaky.wav"
     _write_wav(path)
 
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         validate_output_dir_audio_path(str(path), param_name="audio_path")
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER

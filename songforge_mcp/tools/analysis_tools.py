@@ -4,7 +4,7 @@ from mcp.server.fastmcp import FastMCP
 
 from songforge_mcp.audio_analysis import analyze_audio
 from songforge_mcp.shared_state import jobs as _jobs
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import validate_audio_file_path
 
 
@@ -46,7 +46,7 @@ def register(mcp: FastMCP):
                 job.progress = 1.0
                 job.message = "Analysis complete"
                 job.status = "complete"
-            except VocalSynthMCPError as e:
+            except SongForgeMCPError as e:
                 job.error = f"[{e.code.name}] {e.message}"
                 job.status = "error"
             except Exception as e:

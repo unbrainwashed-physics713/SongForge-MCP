@@ -5,7 +5,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from songforge_mcp.acestep_client import ACEStepClient
 from songforge_mcp.shared_state import jobs as _jobs, separator_client as _separator_client
 from songforge_mcp.youtube_reference import YouTubeReferenceClient
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import (
     measure_wav_duration_seconds,
     validate_audio_file_path,
@@ -114,28 +114,28 @@ def register(mcp: FastMCP):
         # "these don't combine" error rather than an unrelated
         # FILE_NOT_FOUND for whichever path happened to be checked first.
         if reference_audio_path and reference_youtube_url:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.INVALID_PARAMETER,
                 "provide only one of reference_audio_path or reference_youtube_url, not both",
             )
         if remix_source_path and remix_source_youtube_url:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.INVALID_PARAMETER,
                 "provide only one of remix_source_path or remix_source_youtube_url, not both",
             )
         if (remix_source_path or remix_source_youtube_url) and (reference_audio_path or reference_youtube_url):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.INVALID_PARAMETER,
                 "remix_source_path/remix_source_youtube_url (Remix mode) cannot be combined with "
                 "reference_audio_path/reference_youtube_url (Custom mode) — these are different "
                 "ACE-Step generation modes",
             )
         if (remix_source_path or remix_source_youtube_url) and not (0.0 <= remix_strength <= 1.0):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.VALUE_OUT_OF_RANGE, f"remix_strength must be between 0.0 and 1.0, got {remix_strength}"
             )
         if remix_melody_retention is not None and not (0.0 <= remix_melody_retention <= 1.0):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.VALUE_OUT_OF_RANGE,
                 f"remix_melody_retention must be between 0.0 and 1.0, got {remix_melody_retention}",
             )
@@ -214,7 +214,7 @@ def register(mcp: FastMCP):
                 job.progress = 1.0
                 job.message = "Generation complete"
                 job.status = "complete"
-            except VocalSynthMCPError as e:
+            except SongForgeMCPError as e:
                 job.error = f"[{e.code.name}] {e.message}"
                 job.status = "error"
             except Exception as e:
@@ -248,7 +248,7 @@ def register(mcp: FastMCP):
         """
         job = _jobs.get(job_id)
         if job is None:
-            raise VocalSynthMCPError(ErrorCode.FILE_NOT_FOUND, f"no such job_id: {job_id}")
+            raise SongForgeMCPError(ErrorCode.FILE_NOT_FOUND, f"no such job_id: {job_id}")
 
         deadline = asyncio.get_event_loop().time() + max(0.0, min(wait_seconds, 25.0))
         while job.status == "running" and asyncio.get_event_loop().time() < deadline:

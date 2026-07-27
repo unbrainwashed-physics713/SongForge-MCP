@@ -17,7 +17,7 @@ import re
 import subprocess
 
 from songforge_mcp_shared.constants import Paths, Timeouts, ensure_private_dir, no_window_popen_kwargs
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 _VIDEO_ID_PATTERNS = (
     re.compile(r"[?&]v=([A-Za-z0-9_-]{11})"),
@@ -47,7 +47,7 @@ class YouTubeReferenceClient:
 
     def _require_configured(self) -> None:
         if not self.python_exe or not os.path.isfile(self.python_exe):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.ACESTEP_NOT_CONFIGURED,
                 "SONGFORGE_YTDLP_PYTHON is not set or does not point to a valid "
                 "Python interpreter with yt-dlp installed.",
@@ -58,7 +58,7 @@ class YouTubeReferenceClient:
         self._require_configured()
         video_id = _extract_video_id(youtube_url or "")
         if not video_id:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.INVALID_PARAMETER, f"not a recognizable YouTube URL: {youtube_url!r}"
             )
 
@@ -82,18 +82,18 @@ class YouTubeReferenceClient:
                 **no_window_popen_kwargs(),
             )
         except subprocess.TimeoutExpired as e:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.SUBPROCESS_TIMEOUT,
                 f"YouTube download exceeded {Timeouts.YOUTUBE_DOWNLOAD}s",
             ) from e
         if result.returncode != 0:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.SUBPROCESS_FAILED,
                 f"yt-dlp exited {result.returncode}: {result.stderr.strip()[-1500:]}",
             )
 
         if not os.path.isfile(expected_path):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.SYNTHESIS_FAILED,
                 f"yt-dlp reported success but expected output file was not found: {expected_path}",
             )

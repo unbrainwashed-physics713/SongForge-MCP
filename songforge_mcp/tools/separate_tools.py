@@ -3,7 +3,7 @@ import asyncio
 from mcp.server.fastmcp import FastMCP
 
 from songforge_mcp.shared_state import jobs as _jobs, separator_client as _client
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import validate_output_dir_audio_path
 
 
@@ -40,7 +40,7 @@ def register(mcp: FastMCP):
                 job.progress = 1.0
                 job.message = "Separation complete"
                 job.status = "complete"
-            except VocalSynthMCPError as e:
+            except SongForgeMCPError as e:
                 job.error = f"[{e.code.name}] {e.message}"
                 job.status = "error"
             except Exception as e:

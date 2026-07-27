@@ -1,14 +1,14 @@
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 def test_error_carries_code_and_message():
-    err = VocalSynthMCPError(ErrorCode.INVALID_PARAMETER, "caption must not be empty")
+    err = SongForgeMCPError(ErrorCode.INVALID_PARAMETER, "caption must not be empty")
     assert err.code == ErrorCode.INVALID_PARAMETER
     assert err.message == "caption must not be empty"
 
 
 def test_error_string_includes_code_name_and_value():
-    err = VocalSynthMCPError(ErrorCode.FILE_NOT_FOUND, "reference audio not found")
+    err = SongForgeMCPError(ErrorCode.FILE_NOT_FOUND, "reference audio not found")
     assert str(err) == "[FILE_NOT_FOUND (3008)] reference audio not found"
 
 

@@ -13,7 +13,7 @@ from songforge_mcp.voice_reference_library import (
     voice_dir,
 )
 from songforge_mcp_shared import constants
-from songforge_mcp_shared.error_codes import VocalSynthMCPError
+from songforge_mcp_shared.error_codes import SongForgeMCPError
 
 
 def _write_tone(path, duration_seconds, samplerate=48000):
@@ -27,7 +27,7 @@ def test_slugify_voice_name_produces_hyphenated_lowercase_slug():
 
 
 def test_voice_dir_rejects_empty_slug():
-    with pytest.raises(VocalSynthMCPError):
+    with pytest.raises(SongForgeMCPError):
         voice_dir("!!!")
 
 

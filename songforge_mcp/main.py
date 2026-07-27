@@ -57,7 +57,7 @@ async def _lifespan(_app: FastMCP) -> AsyncIterator[dict]:
         warmup_task.cancel()
 
 
-mcp = FastMCP("VocalSynthMCP", instructions=load_instructions(), lifespan=_lifespan)
+mcp = FastMCP("SongForgeMCP", instructions=load_instructions(), lifespan=_lifespan)
 register_all_tools(mcp)
 
 

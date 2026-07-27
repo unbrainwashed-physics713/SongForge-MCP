@@ -16,14 +16,14 @@ import numpy as np
 import librosa
 import soundfile as sf
 
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 def _measure_tempo_and_first_beat(y: np.ndarray, sr: int) -> tuple[float, float]:
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
     tempo = float(tempo) if not hasattr(tempo, "__len__") else float(tempo[0])
     if len(beat_frames) == 0:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER, "no beats detected in audio - cannot beat-align"
         )
     first_beat_time = float(librosa.frames_to_time(beat_frames[0], sr=sr))

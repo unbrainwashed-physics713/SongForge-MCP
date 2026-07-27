@@ -5,7 +5,7 @@ import pretty_midi
 import soundfile as sf
 
 from songforge_mcp_shared.constants import MAX_CAPTION_LENGTH, MAX_LYRICS_LENGTH, Paths
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 _ALLOWED_AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac", ".ogg", ".m4a", ".aac"}
 
@@ -16,9 +16,9 @@ def validate_caption(caption: str) -> None:
     ACE-Step has no note/phoneme input — composition is entirely prompt +
     lyrics driven."""
     if not caption or not caption.strip():
-        raise VocalSynthMCPError(ErrorCode.MISSING_PARAMETER, "caption must not be empty")
+        raise SongForgeMCPError(ErrorCode.MISSING_PARAMETER, "caption must not be empty")
     if len(caption) > MAX_CAPTION_LENGTH:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.VALUE_OUT_OF_RANGE,
             f"caption length {len(caption)} exceeds the {MAX_CAPTION_LENGTH}-character limit",
         )
@@ -30,14 +30,14 @@ def validate_lyrics(lyrics: str) -> None:
     sections. At least one structure tag is required so the model has a
     real song structure to follow, not a single unstructured blob."""
     if not lyrics or not lyrics.strip():
-        raise VocalSynthMCPError(ErrorCode.MISSING_PARAMETER, "lyrics must not be empty")
+        raise SongForgeMCPError(ErrorCode.MISSING_PARAMETER, "lyrics must not be empty")
     if len(lyrics) > MAX_LYRICS_LENGTH:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.VALUE_OUT_OF_RANGE,
             f"lyrics length {len(lyrics)} exceeds the {MAX_LYRICS_LENGTH}-character limit",
         )
     if "[" not in lyrics or "]" not in lyrics:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER,
             "lyrics must include at least one structure tag, e.g. [verse] or [chorus] "
             "— ACE-Step uses these to understand song structure",
@@ -53,7 +53,7 @@ def validate_output_format(output_format: str) -> str:
     OUTPUT_FORMATS. Returns the lowercased value on success."""
     normalized = (output_format or "").strip().lower()
     if normalized not in _ALLOWED_OUTPUT_FORMATS:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER,
             f"output_format {output_format!r} is not one of {sorted(_ALLOWED_OUTPUT_FORMATS)}",
         )
@@ -75,17 +75,17 @@ def validate_audio_file_path(path: str, *, param_name: str) -> str:
     absolute path on success.
     """
     if not path or not str(path).strip():
-        raise VocalSynthMCPError(ErrorCode.MISSING_PARAMETER, f"{param_name} must not be empty")
+        raise SongForgeMCPError(ErrorCode.MISSING_PARAMETER, f"{param_name} must not be empty")
 
     resolved = os.path.realpath(path)
     if not os.path.isfile(resolved):
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.FILE_NOT_FOUND, f"{param_name} does not exist or is not a file: {path}"
         )
 
     ext = os.path.splitext(resolved)[1].lower()
     if ext not in _ALLOWED_AUDIO_EXTENSIONS:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER,
             f"{param_name} has an unsupported extension {ext!r} — expected one of "
             f"{sorted(_ALLOWED_AUDIO_EXTENSIONS)}",
@@ -94,7 +94,7 @@ def validate_audio_file_path(path: str, *, param_name: str) -> str:
     try:
         sf.info(resolved)
     except Exception as e:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER,
             f"{param_name} does not appear to be a valid audio file (failed to parse "
             f"as audio despite its extension): {e}",
@@ -122,7 +122,7 @@ def validate_output_dir_audio_path(path: str, *, param_name: str) -> str:
     except ValueError:
         inside_output_dir = False  # different drives on Windows, etc.
     if not inside_output_dir:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER,
             f"{param_name} must be a file inside {allowed_root} (the output folder this "
             f"server writes generated audio into) — got {path}",
@@ -138,16 +138,16 @@ def validate_output_dir_midi_path(path: str, *, param_name: str) -> str:
     and confirms it actually parses as MIDI rather than trusting the
     extension alone."""
     if not path or not str(path).strip():
-        raise VocalSynthMCPError(ErrorCode.MISSING_PARAMETER, f"{param_name} must not be empty")
+        raise SongForgeMCPError(ErrorCode.MISSING_PARAMETER, f"{param_name} must not be empty")
 
     resolved = os.path.realpath(path)
     if not os.path.isfile(resolved):
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.FILE_NOT_FOUND, f"{param_name} does not exist or is not a file: {path}"
         )
 
     if os.path.splitext(resolved)[1].lower() != ".mid":
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER, f"{param_name} must have a .mid extension, got {path!r}"
         )
 
@@ -157,7 +157,7 @@ def validate_output_dir_midi_path(path: str, *, param_name: str) -> str:
     except ValueError:
         inside_output_dir = False
     if not inside_output_dir:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER,
             f"{param_name} must be a file inside {allowed_root} (the output folder this "
             f"server writes generated files into) — got {path}",
@@ -166,7 +166,7 @@ def validate_output_dir_midi_path(path: str, *, param_name: str) -> str:
     try:
         pretty_midi.PrettyMIDI(resolved)
     except Exception as e:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER,
             f"{param_name} does not appear to be a valid MIDI file: {e}",
         ) from e
@@ -186,6 +186,6 @@ def measure_wav_duration_seconds(wav_path: str) -> float:
         info = sf.info(wav_path)
         return info.frames / info.samplerate
     except Exception as e:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.SYNTHESIS_FAILED, f"could not read rendered audio at {wav_path}: {e}"
         ) from e

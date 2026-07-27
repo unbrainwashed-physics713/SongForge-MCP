@@ -7,7 +7,7 @@ from mcp.server.fastmcp import FastMCP
 
 from songforge_mcp.tools import separate_tools
 from songforge_mcp_shared import constants
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 
 def _register() -> FastMCP:
@@ -29,7 +29,7 @@ def test_split_vocal_stems_rejects_path_outside_output_dir(tmp_path, monkeypatch
 
     mcp = _register()
     tool = mcp._tool_manager.get_tool("split_vocal_stems")
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         asyncio.run(tool.fn(audio_path=str(outside_path)))
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
@@ -73,7 +73,7 @@ def test_split_vocal_stems_job_reports_error(tmp_path, monkeypatch):
     _write_tone(audio_path)
 
     def fake_separate(path):
-        raise VocalSynthMCPError(ErrorCode.SEPARATION_FAILED, "boom")
+        raise SongForgeMCPError(ErrorCode.SEPARATION_FAILED, "boom")
 
     monkeypatch.setattr(separate_tools._client, "separate", fake_separate)
 

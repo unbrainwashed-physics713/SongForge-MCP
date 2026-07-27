@@ -41,7 +41,7 @@ import soundfile as sf
 from playwright.async_api import async_playwright
 
 from songforge_mcp_shared.constants import GradioServer, Paths, Timeouts, ensure_private_dir
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 _IS_WINDOWS = platform.system() == "Windows"
 
@@ -146,7 +146,7 @@ class ACEStepClient:
 
     def _require_configured(self) -> None:
         if not self.acestep_home or not os.path.isdir(self.acestep_home):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.ACESTEP_NOT_CONFIGURED,
                 "SONGFORGE_ACESTEP_HOME is not set or does not point to a valid "
                 "directory. See docs/INSTALLATION.md.",
@@ -250,7 +250,7 @@ class ACEStepClient:
         venv_python = _venv_python_path(self.acestep_home)
         pipeline_script = os.path.join(self.acestep_home, "acestep", "acestep_v15_pipeline.py")
         if not os.path.isfile(venv_python) or not os.path.isfile(pipeline_script):
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.ACESTEP_NOT_CONFIGURED,
                 f"Expected ACE-Step venv/entrypoint not found under {self.acestep_home}. "
                 "Re-run install (see docs/INSTALLATION.md).",
@@ -319,7 +319,7 @@ class ACEStepClient:
                                     **detach_kwargs,
                                 )
                         except OSError as e:
-                            raise VocalSynthMCPError(
+                            raise SongForgeMCPError(
                                 ErrorCode.SUBPROCESS_FAILED, f"failed to launch ACE-Step server: {e}"
                             ) from e
                     else:
@@ -339,7 +339,7 @@ class ACEStepClient:
                 except OSError:
                     pass
 
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.SUBPROCESS_TIMEOUT,
             f"ACE-Step server did not start within {Timeouts.SERVER_STARTUP}s "
             f"(checkpoint loading can be slow on first run). Check {stderr_log}.",
@@ -422,7 +422,7 @@ class ACEStepClient:
                 pass
 
         if count == 0:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.INVALID_PARAMETER,
                 f"advanced setting {label!r} was not found in the UI — check the exact "
                 f"label text (case/wording sensitive) in the ACE-Step Playground",
@@ -449,7 +449,7 @@ class ACEStepClient:
         try:
             await page.get_by_label(str(value), exact=True).first.check(timeout=5000)
         except Exception as e:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.INVALID_PARAMETER,
                 f"could not set advanced setting {label!r} to {value!r} - tried fill, "
                 f"select, and radio-check, all failed: {e}",
@@ -669,7 +669,7 @@ class ACEStepClient:
                     announced_wait = True
                 await asyncio.sleep(3)
             if not acquired:
-                raise VocalSynthMCPError(
+                raise SongForgeMCPError(
                     ErrorCode.SUBPROCESS_TIMEOUT,
                     "timed out waiting for another in-progress generation to finish",
                 )
@@ -710,7 +710,7 @@ class ACEStepClient:
                 try:
                     await page.goto(GradioServer.URL, timeout=60000)
                 except Exception as e:
-                    raise VocalSynthMCPError(
+                    raise SongForgeMCPError(
                         ErrorCode.SUBPROCESS_FAILED, f"could not reach ACE-Step UI: {e}"
                     ) from e
                 await page.wait_for_timeout(4000)
@@ -719,7 +719,7 @@ class ACEStepClient:
 
                 if lora_path:
                     if not os.path.isdir(lora_path):
-                        raise VocalSynthMCPError(
+                        raise SongForgeMCPError(
                             ErrorCode.INVALID_PARAMETER, f"lora_path does not exist: {lora_path}"
                         )
                     await page.get_by_label("Custom", exact=True).check()
@@ -728,7 +728,7 @@ class ACEStepClient:
 
                 if remix_source_path:
                     if not os.path.isfile(remix_source_path):
-                        raise VocalSynthMCPError(
+                        raise SongForgeMCPError(
                             ErrorCode.INVALID_PARAMETER,
                             f"remix_source_path does not exist: {remix_source_path}",
                         )
@@ -743,7 +743,7 @@ class ACEStepClient:
 
                 if reference_audio_path:
                     if not os.path.isfile(reference_audio_path):
-                        raise VocalSynthMCPError(
+                        raise SongForgeMCPError(
                             ErrorCode.INVALID_PARAMETER,
                             f"reference_audio_path does not exist: {reference_audio_path}",
                         )
@@ -790,7 +790,7 @@ class ACEStepClient:
                             await on_progress(1.0, "Generation complete")
                         break
                     if "Error" in status_value or "Failed" in status_value:
-                        raise VocalSynthMCPError(
+                        raise SongForgeMCPError(
                             ErrorCode.SYNTHESIS_FAILED, f"ACE-Step reported: {status_value}"
                         )
 
@@ -821,7 +821,7 @@ class ACEStepClient:
                     # updates without leaving long-tail runs silent.
                     await page.wait_for_timeout(15000)
                 else:
-                    raise VocalSynthMCPError(
+                    raise SongForgeMCPError(
                         ErrorCode.SUBPROCESS_TIMEOUT,
                         f"Generation did not complete within {Timeouts.GENERATION}s",
                     )
@@ -834,7 +834,7 @@ class ACEStepClient:
             f for f in Path(output_dir).rglob(f"*.{ext}") if f.stat().st_mtime >= start_time
         ]
         if not candidates:
-            raise VocalSynthMCPError(
+            raise SongForgeMCPError(
                 ErrorCode.SYNTHESIS_FAILED,
                 "ACE-Step reported completion but no new output file was found",
             )

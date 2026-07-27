@@ -6,7 +6,7 @@ import pytest
 
 from songforge_mcp.separator_client import SeparatorClient
 from songforge_mcp_shared import constants
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 _EXE_NAME = "audio-separator.exe" if platform.system() == "Windows" else "audio-separator"
 
@@ -30,7 +30,7 @@ def test_separate_raises_when_not_configured(tmp_path, monkeypatch):
     # be falsy and silently fall through to any real env var still set in
     # the environment, which isn't what this test means to exercise.
     client = SeparatorClient(separator_venv_python=str(tmp_path / "no_such_python.exe"))
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         client.separate(str(tmp_path / "input.wav"))
     assert exc_info.value.code == ErrorCode.SEPARATOR_NOT_CONFIGURED
 
@@ -38,7 +38,7 @@ def test_separate_raises_when_not_configured(tmp_path, monkeypatch):
 def test_separate_raises_when_input_file_missing(tmp_path):
     python_exe = _make_fake_venv(tmp_path)
     client = SeparatorClient(separator_venv_python=python_exe)
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         client.separate(str(tmp_path / "does_not_exist.wav"))
     assert exc_info.value.code == ErrorCode.FILE_NOT_FOUND
 
@@ -109,6 +109,6 @@ def test_separate_raises_on_nonzero_exit_code(tmp_path, monkeypatch):
     monkeypatch.setattr("songforge_mcp.separator_client.subprocess.run", fake_run)
 
     client = SeparatorClient(separator_venv_python=python_exe)
-    with pytest.raises(VocalSynthMCPError) as exc_info:
+    with pytest.raises(SongForgeMCPError) as exc_info:
         client.separate(str(input_path))
     assert exc_info.value.code == ErrorCode.SEPARATION_FAILED

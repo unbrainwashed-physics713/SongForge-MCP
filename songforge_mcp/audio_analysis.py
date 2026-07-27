@@ -27,7 +27,7 @@ recordings).
 import numpy as np
 import librosa
 
-from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 
 _PITCH_CLASSES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -82,7 +82,7 @@ def _voiced_f0(path: str, fmin_note: str, fmax_note: str) -> np.ndarray:
     try:
         y, sr = librosa.load(path, sr=_ANALYSIS_SR, mono=True)
     except Exception as e:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER, f"could not load {path!r} for pitch analysis: {e}"
         ) from e
     f0, voiced_flag, _voiced_prob = librosa.pyin(
@@ -102,7 +102,7 @@ def measure_vocal_pitch_range(path: str, fmin_note: str = "C2", fmax_note: str =
     generation."""
     voiced_f0 = _voiced_f0(path, fmin_note, fmax_note)
     if len(voiced_f0) == 0:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER,
             f"no voiced pitch detected in {path!r} - is this actually a vocal-only file?",
         )
@@ -120,7 +120,7 @@ def aggregate_vocal_pitch_range(paths: list[str], fmin_note: str = "C2", fmax_no
     for path in paths:
         all_f0.extend(_voiced_f0(path, fmin_note, fmax_note).tolist())
     if not all_f0:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER, "no voiced pitch detected across any of the provided files"
         )
     return _pitch_stats(np.array(all_f0))
@@ -160,7 +160,7 @@ def analyze_audio(path: str) -> dict:
     try:
         y, sr = librosa.load(path, sr=_ANALYSIS_SR, mono=True)
     except Exception as e:
-        raise VocalSynthMCPError(
+        raise SongForgeMCPError(
             ErrorCode.INVALID_PARAMETER, f"could not load {path!r} for audio analysis: {e}"
         ) from e
 

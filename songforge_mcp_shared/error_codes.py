@@ -20,7 +20,7 @@ class ErrorCode(IntEnum):
     FILE_NOT_FOUND = 3008
 
 
-class VocalSynthMCPError(Exception):
+class SongForgeMCPError(Exception):
     def __init__(self, code: ErrorCode, message: str):
         self.code = code
         self.message = message
