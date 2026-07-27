@@ -8,17 +8,18 @@ name: CI
 
 jobs:
   test:
-    # Conservative matrix, not copied from other repos without checking:
-    # basic-pitch pulls in TensorFlow, which has real cross-platform/
-    # cross-Python-version rough edges. Starting narrower (no macOS, no
-    # 3.13) and widening later once actually confirmed green, rather than
-    # guessing a full matrix passes.
+    # Matrix confirmed against real CI runs, not guessed: 3.12 is
+    # excluded because basic-pitch pins tensorflow<2.15.1, and
+    # TensorFlow never published a build in that range for Python 3.12
+    # on any platform (its first 3.12-compatible release is 2.16) - a
+    # hard upstream incompatibility, not something fixable here. 3.10
+    # and 3.11 both confirmed green on ubuntu-latest and windows-latest.
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v4
