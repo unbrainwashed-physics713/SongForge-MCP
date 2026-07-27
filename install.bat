@@ -87,6 +87,59 @@ setx SONGFORGE_SEPARATOR_PYTHON "%SEPARATOR_HOME%\Scripts\python.exe"
 REM ---- Step 6: yt-dlp (already a dependency of this server's own venv) ----
 setx SONGFORGE_YTDLP_PYTHON "%~dp0.venv\Scripts\python.exe"
 
+REM ---- Step 7: Configure Claude Desktop ----
+echo.
+echo Configuring Claude Desktop...
+
+set "CONFIG_DIR=%APPDATA%\Claude"
+set "CONFIG_FILE=%CONFIG_DIR%\claude_desktop_config.json"
+set "SONGFORGE_EXE=%~dp0.venv\Scripts\songforge-mcp.exe"
+
+set /p CONFIGURE_CLAUDE="Configure Claude Desktop for SongForge-MCP? (y/n): "
+if /i not "!CONFIGURE_CLAUDE!"=="y" (
+    echo Skipped. See docs/INSTALLATION.md for manual setup.
+    goto :skip_config
+)
+
+if not exist "%CONFIG_DIR%" mkdir "%CONFIG_DIR%"
+
+if exist "%CONFIG_FILE%" (
+    findstr /c:"\"songforge\"" "%CONFIG_FILE%" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo Claude Desktop config already has a songforge entry - skipping.
+        goto :skip_config
+    )
+    copy "%CONFIG_FILE%" "%CONFIG_FILE%.bak" >nul 2>&1
+    echo Backed up existing config to: %CONFIG_FILE%.bak
+    echo.
+    echo Found existing Claude Desktop config at:
+    echo %CONFIG_FILE%
+    echo.
+    echo You need to MANUALLY add this inside your "mcpServers" block:
+    echo.
+    echo   "songforge": {
+    echo     "command": "%SONGFORGE_EXE%"
+    echo   }
+    echo.
+    echo Opening the config file for you...
+    notepad "%CONFIG_FILE%"
+    goto :skip_config
+)
+
+(
+echo {
+echo   "mcpServers": {
+echo     "songforge": {
+echo       "command": "%SONGFORGE_EXE:\=\\%"
+echo     }
+echo   }
+echo }
+) > "%CONFIG_FILE%"
+echo Created Claude Desktop config at:
+echo %CONFIG_FILE%
+
+:skip_config
+
 echo.
 echo ============================================================
 echo Done.

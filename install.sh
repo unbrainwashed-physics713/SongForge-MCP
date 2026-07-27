@@ -139,6 +139,56 @@ fi
 # ---- Step 6: yt-dlp (already a dependency of this server's own venv) ----
 YTDLP_PYTHON="$(pwd)/.venv/bin/python"
 
+# ---- Step 7: Configure Claude Desktop ----
+SONGFORGE_EXE="$(pwd)/.venv/bin/songforge-mcp"
+echo
+case "$(uname -s)" in
+    Darwin)
+        CONFIG_DIR="$HOME/Library/Application Support/Claude"
+        CONFIG_FILE="$CONFIG_DIR/claude_desktop_config.json"
+        read -r -p "Configure Claude Desktop for SongForge-MCP? (y/n): " CONFIGURE_CLAUDE
+        if [ "$CONFIGURE_CLAUDE" = "y" ] || [ "$CONFIGURE_CLAUDE" = "Y" ]; then
+            mkdir -p "$CONFIG_DIR"
+            if [ -f "$CONFIG_FILE" ]; then
+                if grep -q '"songforge"' "$CONFIG_FILE" 2>/dev/null; then
+                    echo "Claude Desktop config already has a songforge entry - skipping."
+                else
+                    cp "$CONFIG_FILE" "$CONFIG_FILE.bak"
+                    echo "Backed up existing config to: $CONFIG_FILE.bak"
+                    echo
+                    echo "Found existing Claude Desktop config at: $CONFIG_FILE"
+                    echo "You need to MANUALLY add this inside your \"mcpServers\" block:"
+                    echo
+                    echo "  \"songforge\": {"
+                    echo "    \"command\": \"$SONGFORGE_EXE\""
+                    echo "  }"
+                fi
+            else
+                cat > "$CONFIG_FILE" <<EOF
+{
+  "mcpServers": {
+    "songforge": {
+      "command": "$SONGFORGE_EXE"
+    }
+  }
+}
+EOF
+                echo "Created Claude Desktop config at: $CONFIG_FILE"
+            fi
+        else
+            echo "Skipped. See docs/INSTALLATION.md for manual setup."
+        fi
+        ;;
+    *)
+        echo "Claude Desktop's official app doesn't run natively on this OS -"
+        echo "if you're using it through another means, add this to its MCP config:"
+        echo
+        echo "  \"songforge\": {"
+        echo "    \"command\": \"$SONGFORGE_EXE\""
+        echo "  }"
+        ;;
+esac
+
 echo
 echo "============================================================"
 echo "Done."

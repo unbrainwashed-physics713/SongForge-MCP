@@ -1,15 +1,28 @@
 # SongForge-MCP
 
-A local MCP server that turns Claude into the operator of [ACE-Step 1.5](https://github.com/ace-step/ACE-Step-1.5),
-an open-source AI music generation model, so you don't have to.
+**Ask Claude for a song in plain English — "an upbeat pop track about
+road trips, with lyrics about freedom" — and get back a real, finished
+audio file.** No music software, no AI/ML knowledge, and no account or
+subscription required. Everything runs on your own computer.
 
-ACE-Step 1.5 is genuinely capable — but its own interface exposes around
-seventy interdependent generation settings, and getting a good result out
-of it depends on a number of non-obvious defaults and interactions
-between them. SongForge-MCP removes that layer entirely: you describe
-the track you want in conversation, and Claude calls this server to
-produce it, handling every underlying setting correctly on your behalf.
-You never touch a settings panel.
+## What is this, exactly?
+
+This is an **MCP server** — a small local program that gives Claude
+Desktop (Anthropic's Claude app) a new ability it doesn't have out of
+the box: generating actual music. "MCP" (Model Context Protocol) is
+just the standard way Claude apps plug in extra tools; you don't need
+to understand it to use this, only to install it once (see below).
+
+Under the hood, this server drives [ACE-Step 1.5](https://github.com/ace-step/ACE-Step-1.5) —
+a genuinely capable, open-source AI music generation model, entirely
+credited to its original authors; this project doesn't train or own
+any model, it just automates using one well. ACE-Step's own interface
+exposes around seventy interdependent generation settings, and getting
+a good result out of it depends on a number of non-obvious defaults and
+interactions between them. SongForge-MCP removes that layer entirely:
+you describe the track you want in conversation, and Claude calls this
+server to produce it, handling every underlying setting correctly on
+your behalf. You never touch a settings panel.
 
 ## What this gives you
 
@@ -46,8 +59,9 @@ published requirements, not a guess.
    step does and what to do if one fails. It provisions everything end to
    end, including Python itself on Windows if it isn't already on your
    system.
-2. Point Claude Desktop's MCP configuration at this server — also covered
-   in `docs/INSTALLATION.md`.
+2. The installer offers to configure Claude Desktop for you automatically
+   — say yes and restart Claude Desktop. If you'd rather do it by hand
+   (or use a different MCP client), see `docs/INSTALLATION.md`.
 3. Ask for a track in plain language. See [`docs/TOOLS.md`](docs/TOOLS.md)
    for the full tool reference and example requests.
 

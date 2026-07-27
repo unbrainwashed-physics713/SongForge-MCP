@@ -144,7 +144,11 @@ installation** so these take effect.
 
 ## Configuring Claude Desktop
 
-Add this server to Claude Desktop's MCP configuration, pointing at the
+Both installers now offer to do this step for you automatically (they'll
+ask "Configure Claude Desktop for SongForge-MCP? (y/n)" near the end of
+the run) — say yes and skip to [First run](#first-run) below. If you said
+no, are using a different MCP client, or just want to do it by hand:
+add this server to Claude Desktop's MCP configuration, pointing at the
 executable created inside this project's own `.venv`:
 
 ```json
