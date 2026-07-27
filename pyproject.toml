@@ -3,15 +3,21 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vocal-synth-mcp"
-version = "0.1.0"
-description = "MCP server for local singing-voice synthesis (melody + lyrics -> vocal stem)"
+name = "songforge-mcp"
+version = "0.2.0"
+description = "MCP server for local AI music generation via ACE-Step 1.5, with optional vocal/instrumental stem splitting"
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "mcp[cli]>=1.0.0",
-    "g2p_en>=2.1.0",
+    "playwright>=1.61.0",
+    "yt-dlp>=2026.7.4",
+    "soundfile>=0.13.1",
+    "librosa>=0.11.0",
+    "numpy>=1.26.4",
+    "basic-pitch>=0.4.0",
+    "psutil>=7.0.0",
 ]
 
 [project.optional-dependencies]
@@ -21,10 +27,10 @@ dev = [
 ]
 
 [project.scripts]
-vocal-synth-mcp = "vocal_synth_mcp.main:main"
+songforge-mcp = "songforge_mcp.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["vocal_synth_mcp", "vocal_synth_mcp_shared"]
+packages = ["songforge_mcp", "songforge_mcp_shared"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

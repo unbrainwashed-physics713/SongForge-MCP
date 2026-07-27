@@ -1,8 +1,8 @@
-# Vocal-Synth-MCP v1 Implementation Plan
+# SongForge-MCP v1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a working, testable v1 of Vocal-Synth-MCP: an MCP server that renders a vocal-only WAV stem from an explicit melody + lyrics via a subprocess-driven openvpi/DiffSinger pipeline, with a rich diagnostics/typed-error tool contract, following `Reaper-MCP`/`AudacityMCP`'s repo conventions.
+**Goal:** Build a working, testable v1 of SongForge-MCP: an MCP server that renders a vocal-only WAV stem from an explicit melody + lyrics via a subprocess-driven openvpi/DiffSinger pipeline, with a rich diagnostics/typed-error tool contract, following `Reaper-MCP`/`AudacityMCP`'s repo conventions.
 
 **Architecture:** `synthesize_vocal`/`list_voicebanks`/`validate_score` MCP tools call into a small set of pure, independently-testable modules (`protocol.py` builds/validates DiffSinger's `.ds` request format and parses its output; `diffsinger_client.py` subprocesses into a separately-cloned DiffSinger checkout's two-stage `variance`→`acoustic` CLI). All composition/melody/lyric decisions happen outside this codebase, in the calling LLM's conversation — this server only renders what it's explicitly told to sing.
 
@@ -15,7 +15,7 @@
 - Output is **vocal-only** — no backing instrumentation is ever generated or mixed in by this server.
 - No melody/lyric composition logic anywhere in this codebase — every tool takes fully explicit notes+lyrics. No auto-retry or auto-parameter-adjustment inside the server either — diagnostics are reported, retries are the calling LLM's decision.
 - All raised errors are `VocalSynthMCPError` carrying a specific `ErrorCode`, mirroring `Reaper-MCP`'s `ReaperMCPError`/`ErrorCode` pattern — never a bare `Exception` or generic message.
-- Repo layout mirrors `Reaper-MCP`/`AudacityMCP`: `vocal_synth_mcp/` (tools, auto-registered), `vocal_synth_mcp_shared/` (constants, error codes, protocol), `docs/`, `tests/`, `install.bat`/`install.sh`.
+- Repo layout mirrors `Reaper-MCP`/`AudacityMCP`: `songforge_mcp/` (tools, auto-registered), `songforge_mcp_shared/` (constants, error codes, protocol), `docs/`, `tests/`, `install.bat`/`install.sh`.
 - Source of truth for all of the above: `docs/2026-07-21-design.md` in this repo.
 
 ---
@@ -23,8 +23,8 @@
 ### Task 1: Shared error codes
 
 **Files:**
-- Create: `vocal_synth_mcp_shared/__init__.py` (empty)
-- Create: `vocal_synth_mcp_shared/error_codes.py`
+- Create: `songforge_mcp_shared/__init__.py` (empty)
+- Create: `songforge_mcp_shared/error_codes.py`
 - Test: `tests/test_error_codes.py`
 
 **Interfaces:**
@@ -36,7 +36,7 @@
 # tests/test_error_codes.py
 import pytest
 
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
 
 
 def test_error_carries_code_and_message():
@@ -58,14 +58,14 @@ def test_error_codes_are_unique():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_error_codes.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp_shared'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp_shared'`
 
 - [ ] **Step 3: Write the implementation**
 
-Create `vocal_synth_mcp_shared/__init__.py` (empty file).
+Create `songforge_mcp_shared/__init__.py` (empty file).
 
 ```python
-# vocal_synth_mcp_shared/error_codes.py
+# songforge_mcp_shared/error_codes.py
 from enum import IntEnum
 
 
@@ -106,7 +106,7 @@ Expected: 3 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp_shared/__init__.py vocal_synth_mcp_shared/error_codes.py tests/test_error_codes.py
+git add songforge_mcp_shared/__init__.py songforge_mcp_shared/error_codes.py tests/test_error_codes.py
 git commit -m "feat: add typed VocalSynthMCPError/ErrorCode"
 ```
 
@@ -115,12 +115,12 @@ git commit -m "feat: add typed VocalSynthMCPError/ErrorCode"
 ### Task 2: Shared constants & safety limits
 
 **Files:**
-- Create: `vocal_synth_mcp_shared/constants.py`
+- Create: `songforge_mcp_shared/constants.py`
 - Test: `tests/test_constants.py`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `Paths.DIFFSINGER_HOME: str` (from `VOCAL_SYNTH_DIFFSINGER_HOME` env var), `Paths.OUTPUT_DIR: str`, `Timeouts.VARIANCE_STAGE: float`, `Timeouts.ACOUSTIC_STAGE: float`, `MIN_MIDI_NOTE: int`, `MAX_MIDI_NOTE: int`, `MAX_NOTES_PER_CALL: int`, `MAX_LYRIC_LENGTH: int`, `ensure_private_dir(path: str) -> None`. Used by Tasks 3, 4, 5.
+- Produces: `Paths.DIFFSINGER_HOME: str` (from `SONGFORGE_DIFFSINGER_HOME` env var), `Paths.OUTPUT_DIR: str`, `Timeouts.VARIANCE_STAGE: float`, `Timeouts.ACOUSTIC_STAGE: float`, `MIN_MIDI_NOTE: int`, `MAX_MIDI_NOTE: int`, `MAX_NOTES_PER_CALL: int`, `MAX_LYRIC_LENGTH: int`, `ensure_private_dir(path: str) -> None`. Used by Tasks 3, 4, 5.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -128,7 +128,7 @@ git commit -m "feat: add typed VocalSynthMCPError/ErrorCode"
 # tests/test_constants.py
 import tempfile
 
-from vocal_synth_mcp_shared import constants
+from songforge_mcp_shared import constants
 
 
 def test_midi_range_is_valid_and_ordered():
@@ -153,12 +153,12 @@ def test_ensure_private_dir_creates_directory(tmp_path):
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_constants.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp_shared.constants'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp_shared.constants'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# vocal_synth_mcp_shared/constants.py
+# songforge_mcp_shared/constants.py
 """Shared constants: DiffSinger checkout paths, timeouts, and safety limits."""
 import os
 import tempfile
@@ -179,8 +179,8 @@ class Paths:
     # by the user at install time (see docs/INSTALLATION.md) — DiffSinger
     # is not pip-installable, so this server subprocesses into that clone
     # rather than importing it.
-    DIFFSINGER_HOME = os.environ.get("VOCAL_SYNTH_DIFFSINGER_HOME", "")
-    OUTPUT_DIR = os.path.join(tempfile.gettempdir(), "vocal_synth_mcp", "renders")
+    DIFFSINGER_HOME = os.environ.get("SONGFORGE_DIFFSINGER_HOME", "")
+    OUTPUT_DIR = os.path.join(tempfile.gettempdir(), "songforge_mcp", "renders")
 
 
 class Timeouts:
@@ -189,7 +189,7 @@ class Timeouts:
 
 
 # MIDI note range this server accepts without a voicebank-specific override
-# (see vocal_synth_mcp_shared/voicebanks.py for per-voicebank ranges, which
+# (see songforge_mcp_shared/voicebanks.py for per-voicebank ranges, which
 # are typically narrower). C2-C6 covers the great majority of pop/EDM lead
 # vocal writing.
 MIN_MIDI_NOTE = 36  # C2
@@ -207,7 +207,7 @@ Expected: 4 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp_shared/constants.py tests/test_constants.py
+git add songforge_mcp_shared/constants.py tests/test_constants.py
 git commit -m "feat: add shared paths/timeouts/safety-limit constants"
 ```
 
@@ -216,7 +216,7 @@ git commit -m "feat: add shared paths/timeouts/safety-limit constants"
 ### Task 3: `.ds` protocol module — build, validate, parse
 
 **Files:**
-- Create: `vocal_synth_mcp_shared/protocol.py`
+- Create: `songforge_mcp_shared/protocol.py`
 - Test: `tests/test_protocol.py`
 - Modify: `pyproject.toml` — add `g2p_en>=2.1.0` to `dependencies`
 
@@ -232,8 +232,8 @@ import wave
 
 import pytest
 
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
-from vocal_synth_mcp_shared.protocol import (
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.protocol import (
     NoteEvent,
     build_ds_file,
     measure_wav_duration_seconds,
@@ -338,7 +338,7 @@ def test_measure_wav_duration_seconds(tmp_path):
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_protocol.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp_shared.protocol'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp_shared.protocol'`
 
 - [ ] **Step 3: Add the dependency**
 
@@ -359,13 +359,13 @@ dependencies = [
 - [ ] **Step 4: Write the implementation**
 
 ```python
-# vocal_synth_mcp_shared/protocol.py
+# songforge_mcp_shared/protocol.py
 """Wire format helpers for DiffSinger's .ds input files and output parsing."""
 import wave
 from dataclasses import dataclass
 
-from vocal_synth_mcp_shared.constants import MAX_MIDI_NOTE, MAX_NOTES_PER_CALL, MIN_MIDI_NOTE
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.constants import MAX_MIDI_NOTE, MAX_NOTES_PER_CALL, MIN_MIDI_NOTE
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
 
 _MIDI_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -495,7 +495,7 @@ Expected: 12 passed
 - [ ] **Step 6: Commit**
 
 ```bash
-git add vocal_synth_mcp_shared/protocol.py tests/test_protocol.py pyproject.toml
+git add songforge_mcp_shared/protocol.py tests/test_protocol.py pyproject.toml
 git commit -m "feat: add .ds build/validate/parse protocol helpers"
 ```
 
@@ -504,8 +504,8 @@ git commit -m "feat: add .ds build/validate/parse protocol helpers"
 ### Task 4: DiffSinger subprocess client
 
 **Files:**
-- Create: `vocal_synth_mcp/__init__.py` (empty)
-- Create: `vocal_synth_mcp/diffsinger_client.py`
+- Create: `songforge_mcp/__init__.py` (empty)
+- Create: `songforge_mcp/diffsinger_client.py`
 - Test: `tests/test_diffsinger_client.py`
 
 **Interfaces:**
@@ -522,8 +522,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from vocal_synth_mcp.diffsinger_client import DiffSingerClient
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp.diffsinger_client import DiffSingerClient
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
 
 
 def _make_checkout(tmp_path):
@@ -543,7 +543,7 @@ def test_synthesize_raises_on_stage_timeout(tmp_path):
     checkout = _make_checkout(tmp_path)
     client = DiffSingerClient(diffsinger_home=str(checkout))
 
-    with patch("vocal_synth_mcp.diffsinger_client.subprocess.run") as mock_run:
+    with patch("songforge_mcp.diffsinger_client.subprocess.run") as mock_run:
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="infer.py", timeout=1.0)
         with pytest.raises(VocalSynthMCPError) as exc_info:
             client.synthesize({"ph_seq": "HH AH0"}, experiment="test-exp")
@@ -554,7 +554,7 @@ def test_synthesize_raises_on_nonzero_exit(tmp_path):
     checkout = _make_checkout(tmp_path)
     client = DiffSingerClient(diffsinger_home=str(checkout))
 
-    with patch("vocal_synth_mcp.diffsinger_client.subprocess.run") as mock_run:
+    with patch("songforge_mcp.diffsinger_client.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="RuntimeError: bad checkpoint")
         with pytest.raises(VocalSynthMCPError) as exc_info:
             client.synthesize({"ph_seq": "HH AH0"}, experiment="test-exp")
@@ -577,7 +577,7 @@ def test_synthesize_returns_wav_path_and_warnings_on_success(tmp_path):
         stderr = "Warning: OOV phoneme for 'xyz'\n" if stage == "variance" else ""
         return MagicMock(returncode=0, stdout="", stderr=stderr)
 
-    with patch("vocal_synth_mcp.diffsinger_client.subprocess.run", side_effect=fake_run):
+    with patch("songforge_mcp.diffsinger_client.subprocess.run", side_effect=fake_run):
         result = client.synthesize({"ph_seq": "HH AH0"}, experiment="test-exp")
 
     assert result["wav_path"].endswith(".wav")
@@ -589,7 +589,7 @@ def test_synthesize_raises_when_acoustic_stage_produces_no_wav(tmp_path):
     checkout = _make_checkout(tmp_path)
     client = DiffSingerClient(diffsinger_home=str(checkout))
 
-    with patch("vocal_synth_mcp.diffsinger_client.subprocess.run") as mock_run:
+    with patch("songforge_mcp.diffsinger_client.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         with pytest.raises(VocalSynthMCPError) as exc_info:
             client.synthesize({"ph_seq": "HH AH0"}, experiment="test-exp")
@@ -599,12 +599,12 @@ def test_synthesize_raises_when_acoustic_stage_produces_no_wav(tmp_path):
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_diffsinger_client.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# vocal_synth_mcp/diffsinger_client.py
+# songforge_mcp/diffsinger_client.py
 """Subprocess wrapper around a cloned openvpi/DiffSinger checkout.
 
 DiffSinger is not pip-installable — inference happens by invoking its own
@@ -622,9 +622,9 @@ import subprocess
 import tempfile
 import uuid
 
-from vocal_synth_mcp_shared.constants import Paths, Timeouts, ensure_private_dir
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
-from vocal_synth_mcp_shared.protocol import parse_stage_output
+from songforge_mcp_shared.constants import Paths, Timeouts, ensure_private_dir
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.protocol import parse_stage_output
 
 
 class DiffSingerClient:
@@ -636,7 +636,7 @@ class DiffSingerClient:
         if not self.diffsinger_home or not os.path.isdir(self.diffsinger_home):
             raise VocalSynthMCPError(
                 ErrorCode.DIFFSINGER_NOT_CONFIGURED,
-                "VOCAL_SYNTH_DIFFSINGER_HOME is not set or does not point to a "
+                "SONGFORGE_DIFFSINGER_HOME is not set or does not point to a "
                 "valid directory. See docs/INSTALLATION.md.",
             )
 
@@ -675,7 +675,7 @@ class DiffSingerClient:
         """
         self._require_configured()
         render_id = uuid.uuid4().hex
-        ds_dir = os.path.join(tempfile.gettempdir(), "vocal_synth_mcp")
+        ds_dir = os.path.join(tempfile.gettempdir(), "songforge_mcp")
         os.makedirs(ds_dir, exist_ok=True)
         ds_path = os.path.join(ds_dir, f"{render_id}.ds")
         with open(ds_path, "w", encoding="utf-8") as f:
@@ -704,7 +704,7 @@ Expected: 5 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp/__init__.py vocal_synth_mcp/diffsinger_client.py tests/test_diffsinger_client.py
+git add songforge_mcp/__init__.py songforge_mcp/diffsinger_client.py tests/test_diffsinger_client.py
 git commit -m "feat: add DiffSinger two-stage subprocess client"
 ```
 
@@ -713,7 +713,7 @@ git commit -m "feat: add DiffSinger two-stage subprocess client"
 ### Task 5: Voicebank registry
 
 **Files:**
-- Create: `vocal_synth_mcp_shared/voicebanks.py`
+- Create: `songforge_mcp_shared/voicebanks.py`
 - Test: `tests/test_voicebanks.py`
 
 **Interfaces:**
@@ -726,7 +726,7 @@ git commit -m "feat: add DiffSinger two-stage subprocess client"
 
 ```python
 # tests/test_voicebanks.py
-from vocal_synth_mcp_shared.voicebanks import VOICEBANK_REGISTRY
+from songforge_mcp_shared.voicebanks import VOICEBANK_REGISTRY
 
 
 def test_registry_is_not_empty():
@@ -751,12 +751,12 @@ def test_every_entry_has_a_nonempty_experiment_name():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_voicebanks.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp_shared.voicebanks'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp_shared.voicebanks'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# vocal_synth_mcp_shared/voicebanks.py
+# songforge_mcp_shared/voicebanks.py
 """Registry of configured DiffSinger voicebanks.
 
 Each entry's `experiment` value must match the folder name under
@@ -817,7 +817,7 @@ Expected: 4 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp_shared/voicebanks.py tests/test_voicebanks.py
+git add songforge_mcp_shared/voicebanks.py tests/test_voicebanks.py
 git commit -m "feat: add voicebank registry with LUNAI Katyusha v1 default"
 ```
 
@@ -826,8 +826,8 @@ git commit -m "feat: add voicebank registry with LUNAI Katyusha v1 default"
 ### Task 6: Instructions loader + core instructions doc
 
 **Files:**
-- Create: `vocal_synth_mcp/instructions/__init__.py`
-- Create: `vocal_synth_mcp/instructions/00_core.md`
+- Create: `songforge_mcp/instructions/__init__.py`
+- Create: `songforge_mcp/instructions/00_core.md`
 - Test: `tests/test_instructions.py`
 
 **Interfaces:**
@@ -838,7 +838,7 @@ git commit -m "feat: add voicebank registry with LUNAI Katyusha v1 default"
 
 ```python
 # tests/test_instructions.py
-from vocal_synth_mcp.instructions import load_instructions
+from songforge_mcp.instructions import load_instructions
 
 
 def test_load_instructions_returns_nonempty_text():
@@ -856,12 +856,12 @@ def test_load_instructions_documents_the_note_format():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_instructions.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp.instructions'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp.instructions'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# vocal_synth_mcp/instructions/__init__.py
+# songforge_mcp/instructions/__init__.py
 from pathlib import Path
 
 
@@ -872,8 +872,8 @@ def load_instructions() -> str:
 ```
 
 ```markdown
-<!-- vocal_synth_mcp/instructions/00_core.md -->
-# Vocal-Synth-MCP
+<!-- songforge_mcp/instructions/00_core.md -->
+# SongForge-MCP
 
 Renders a **vocal-only** WAV stem from an explicit melody + lyrics. This
 server never composes anything — no melody, no lyrics, no backing
@@ -938,7 +938,7 @@ Expected: 2 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp/instructions/
+git add songforge_mcp/instructions/
 git commit -m "feat: add injected instructions doc for the calling LLM"
 ```
 
@@ -947,8 +947,8 @@ git commit -m "feat: add injected instructions doc for the calling LLM"
 ### Task 7: `validate_score` tool
 
 **Files:**
-- Create: `vocal_synth_mcp/tools/__init__.py` (empty)
-- Create: `vocal_synth_mcp/tools/validate_tools.py`
+- Create: `songforge_mcp/tools/__init__.py` (empty)
+- Create: `songforge_mcp/tools/validate_tools.py`
 - Test: `tests/test_validate_tools.py`
 
 **Interfaces:**
@@ -964,8 +964,8 @@ import asyncio
 import pytest
 from mcp.server.fastmcp import FastMCP
 
-from vocal_synth_mcp.tools import validate_tools
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp.tools import validate_tools
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
 
 
 def _register() -> FastMCP:
@@ -1009,18 +1009,18 @@ def test_validate_score_rejects_non_positive_bpm():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_validate_tools.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp.tools'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp.tools'`
 
 - [ ] **Step 3: Write the implementation**
 
-Create `vocal_synth_mcp/tools/__init__.py` (empty file).
+Create `songforge_mcp/tools/__init__.py` (empty file).
 
 ```python
-# vocal_synth_mcp/tools/validate_tools.py
+# songforge_mcp/tools/validate_tools.py
 from mcp.server.fastmcp import FastMCP
 
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
-from vocal_synth_mcp_shared.protocol import NoteEvent, validate_notes
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.protocol import NoteEvent, validate_notes
 
 
 def register(mcp: FastMCP):
@@ -1061,7 +1061,7 @@ Expected: 3 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp/tools/__init__.py vocal_synth_mcp/tools/validate_tools.py tests/test_validate_tools.py
+git add songforge_mcp/tools/__init__.py songforge_mcp/tools/validate_tools.py tests/test_validate_tools.py
 git commit -m "feat: add validate_score MCP tool"
 ```
 
@@ -1070,7 +1070,7 @@ git commit -m "feat: add validate_score MCP tool"
 ### Task 8: `list_voicebanks` tool
 
 **Files:**
-- Create: `vocal_synth_mcp/tools/voicebank_tools.py`
+- Create: `songforge_mcp/tools/voicebank_tools.py`
 - Test: `tests/test_voicebank_tools.py`
 
 **Interfaces:**
@@ -1085,8 +1085,8 @@ import asyncio
 
 from mcp.server.fastmcp import FastMCP
 
-from vocal_synth_mcp.tools import voicebank_tools
-from vocal_synth_mcp_shared.voicebanks import VOICEBANK_REGISTRY
+from songforge_mcp.tools import voicebank_tools
+from songforge_mcp_shared.voicebanks import VOICEBANK_REGISTRY
 
 
 def test_list_voicebanks_returns_every_registered_voicebank():
@@ -1105,15 +1105,15 @@ def test_list_voicebanks_returns_every_registered_voicebank():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_voicebank_tools.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp.tools.voicebank_tools'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp.tools.voicebank_tools'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# vocal_synth_mcp/tools/voicebank_tools.py
+# songforge_mcp/tools/voicebank_tools.py
 from mcp.server.fastmcp import FastMCP
 
-from vocal_synth_mcp_shared.voicebanks import VOICEBANK_REGISTRY
+from songforge_mcp_shared.voicebanks import VOICEBANK_REGISTRY
 
 
 def register(mcp: FastMCP):
@@ -1147,7 +1147,7 @@ Expected: 1 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp/tools/voicebank_tools.py tests/test_voicebank_tools.py
+git add songforge_mcp/tools/voicebank_tools.py tests/test_voicebank_tools.py
 git commit -m "feat: add list_voicebanks MCP tool"
 ```
 
@@ -1156,7 +1156,7 @@ git commit -m "feat: add list_voicebanks MCP tool"
 ### Task 9: `synthesize_vocal` tool
 
 **Files:**
-- Create: `vocal_synth_mcp/tools/synthesize_tools.py`
+- Create: `songforge_mcp/tools/synthesize_tools.py`
 - Test: `tests/test_synthesize_tools.py`
 
 **Interfaces:**
@@ -1174,8 +1174,8 @@ from unittest.mock import patch
 import pytest
 from mcp.server.fastmcp import FastMCP
 
-from vocal_synth_mcp.tools import synthesize_tools
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp.tools import synthesize_tools
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
 
 
 def _write_silent_wav(path: str, seconds: float, framerate: int = 44100) -> None:
@@ -1239,18 +1239,18 @@ def test_synthesize_vocal_returns_wav_path_and_diagnostics(tmp_path):
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_synthesize_tools.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp.tools.synthesize_tools'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp.tools.synthesize_tools'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# vocal_synth_mcp/tools/synthesize_tools.py
+# songforge_mcp/tools/synthesize_tools.py
 from mcp.server.fastmcp import FastMCP
 
-from vocal_synth_mcp.diffsinger_client import DiffSingerClient
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
-from vocal_synth_mcp_shared.protocol import NoteEvent, build_ds_file, measure_wav_duration_seconds
-from vocal_synth_mcp_shared.voicebanks import VOICEBANK_REGISTRY
+from songforge_mcp.diffsinger_client import DiffSingerClient
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.protocol import NoteEvent, build_ds_file, measure_wav_duration_seconds
+from songforge_mcp_shared.voicebanks import VOICEBANK_REGISTRY
 
 _client = DiffSingerClient()
 
@@ -1319,7 +1319,7 @@ Expected: 3 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp/tools/synthesize_tools.py tests/test_synthesize_tools.py
+git add songforge_mcp/tools/synthesize_tools.py tests/test_synthesize_tools.py
 git commit -m "feat: add synthesize_vocal MCP tool"
 ```
 
@@ -1328,11 +1328,11 @@ git commit -m "feat: add synthesize_vocal MCP tool"
 ### Task 10: Tool auto-registration
 
 **Files:**
-- Create: `vocal_synth_mcp/tool_registry.py`
+- Create: `songforge_mcp/tool_registry.py`
 - Test: `tests/test_tool_registry.py`
 
 **Interfaces:**
-- Consumes: `vocal_synth_mcp.tools` package (Tasks 7-9).
+- Consumes: `songforge_mcp.tools` package (Tasks 7-9).
 - Produces: `register_all_tools(mcp: FastMCP) -> None`; `_EXPECTED_MODULES: frozenset[str]`. Used by Task 11.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1343,14 +1343,14 @@ import pkgutil
 
 from mcp.server.fastmcp import FastMCP
 
-import vocal_synth_mcp.tools as tools_package
-from vocal_synth_mcp.tool_registry import _EXPECTED_MODULES, register_all_tools
+import songforge_mcp.tools as tools_package
+from songforge_mcp.tool_registry import _EXPECTED_MODULES, register_all_tools
 
 
 def _modules_on_disk_with_register() -> set[str]:
     found = set()
     for _finder, name, _ispkg in pkgutil.iter_modules(tools_package.__path__):
-        module = __import__(f"vocal_synth_mcp.tools.{name}", fromlist=["register"])
+        module = __import__(f"songforge_mcp.tools.{name}", fromlist=["register"])
         if hasattr(module, "register"):
             found.add(name)
     return found
@@ -1370,13 +1370,13 @@ def test_register_all_tools_registers_every_expected_module():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_tool_registry.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp.tool_registry'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp.tool_registry'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# vocal_synth_mcp/tool_registry.py
-"""Auto-discovers and registers every tool module in vocal_synth_mcp/tools/."""
+# songforge_mcp/tool_registry.py
+"""Auto-discovers and registers every tool module in songforge_mcp/tools/."""
 import importlib
 import logging
 import pkgutil
@@ -1384,7 +1384,7 @@ import sys
 
 from mcp.server.fastmcp import FastMCP
 
-import vocal_synth_mcp.tools as tools_package
+import songforge_mcp.tools as tools_package
 
 logger = logging.getLogger(__name__)
 
@@ -1392,7 +1392,7 @@ _EXPECTED_MODULES = frozenset({"synthesize_tools", "voicebank_tools", "validate_
 
 
 def register_all_tools(mcp: FastMCP) -> None:
-    """Discover and register every tool module in vocal_synth_mcp/tools/.
+    """Discover and register every tool module in songforge_mcp/tools/.
 
     A module counts as a tool provider if it defines register(mcp). If a
     module raises during import or registration, log loudly and keep going
@@ -1403,10 +1403,10 @@ def register_all_tools(mcp: FastMCP) -> None:
 
     for _finder, name, _ispkg in pkgutil.iter_modules(tools_package.__path__):
         try:
-            module = importlib.import_module(f"vocal_synth_mcp.tools.{name}")
+            module = importlib.import_module(f"songforge_mcp.tools.{name}")
         except Exception as e:
             logger.error("IMPORT FAILED for tool module %s: %s", name, e, exc_info=True)
-            sys.stderr.write(f"[vocal-synth-mcp] FAILED to import tool module '{name}': {e}\n")
+            sys.stderr.write(f"[songforge-mcp] FAILED to import tool module '{name}': {e}\n")
             failures.append((name, e))
             continue
 
@@ -1418,15 +1418,15 @@ def register_all_tools(mcp: FastMCP) -> None:
             registered.append(name)
         except Exception as e:
             logger.error("REGISTER FAILED for %s: %s", name, e, exc_info=True)
-            sys.stderr.write(f"[vocal-synth-mcp] Tool registration failed for '{name}': {e}\n")
+            sys.stderr.write(f"[songforge-mcp] Tool registration failed for '{name}': {e}\n")
             failures.append((name, e))
 
     missing = _EXPECTED_MODULES - set(registered) - {n for n, _ in failures}
     if missing:
-        sys.stderr.write(f"[vocal-synth-mcp] WARNING: expected module(s) not found on disk: {sorted(missing)}\n")
-    sys.stderr.write(f"[vocal-synth-mcp] registered {len(registered)} tool module(s)\n")
+        sys.stderr.write(f"[songforge-mcp] WARNING: expected module(s) not found on disk: {sorted(missing)}\n")
+    sys.stderr.write(f"[songforge-mcp] registered {len(registered)} tool module(s)\n")
     if failures:
-        sys.stderr.write(f"[vocal-synth-mcp] {len(failures)} tool module(s) failed to load: {[n for n, _ in failures]}\n")
+        sys.stderr.write(f"[songforge-mcp] {len(failures)} tool module(s) failed to load: {[n for n, _ in failures]}\n")
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -1437,7 +1437,7 @@ Expected: 2 passed
 - [ ] **Step 5: Commit**
 
 ```bash
-git add vocal_synth_mcp/tool_registry.py tests/test_tool_registry.py
+git add songforge_mcp/tool_registry.py tests/test_tool_registry.py
 git commit -m "feat: add tool auto-registration"
 ```
 
@@ -1446,19 +1446,19 @@ git commit -m "feat: add tool auto-registration"
 ### Task 11: FastMCP entry point
 
 **Files:**
-- Create: `vocal_synth_mcp/main.py`
+- Create: `songforge_mcp/main.py`
 - Test: `tests/test_main.py`
 
 **Interfaces:**
 - Consumes: `load_instructions` from Task 6; `register_all_tools` from Task 10.
-- Produces: module-level `mcp: FastMCP`; `main() -> None` (matches `pyproject.toml`'s `vocal-synth-mcp = "vocal_synth_mcp.main:main"` script entry).
+- Produces: module-level `mcp: FastMCP`; `main() -> None` (matches `pyproject.toml`'s `songforge-mcp = "songforge_mcp.main:main"` script entry).
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
 # tests/test_main.py
 def test_main_module_registers_all_tools_on_import():
-    import vocal_synth_mcp.main as main_module
+    import songforge_mcp.main as main_module
 
     names = {t.name for t in main_module.mcp._tool_manager.list_tools()}
     assert {"synthesize_vocal", "list_voicebanks", "validate_score"} <= names
@@ -1467,12 +1467,12 @@ def test_main_module_registers_all_tools_on_import():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_main.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'vocal_synth_mcp.main'`
+Expected: FAIL with `ModuleNotFoundError: No module named 'songforge_mcp.main'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# vocal_synth_mcp/main.py
+# songforge_mcp/main.py
 import sys
 
 # MCP's stdio transport requires UTF-8 JSON-RPC framing; Python's default
@@ -1485,8 +1485,8 @@ sys.stderr.reconfigure(encoding="utf-8")
 
 from mcp.server.fastmcp import FastMCP
 
-from vocal_synth_mcp.instructions import load_instructions
-from vocal_synth_mcp.tool_registry import register_all_tools
+from songforge_mcp.instructions import load_instructions
+from songforge_mcp.tool_registry import register_all_tools
 
 mcp = FastMCP("VocalSynthMCP", instructions=load_instructions())
 register_all_tools(mcp)
@@ -1513,7 +1513,7 @@ Expected: all tests across every task pass, no failures
 - [ ] **Step 6: Commit**
 
 ```bash
-git add vocal_synth_mcp/main.py tests/test_main.py
+git add songforge_mcp/main.py tests/test_main.py
 git commit -m "feat: add FastMCP entry point"
 ```
 
@@ -1538,21 +1538,21 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "Setting up vocal-synth-mcp..."
+echo "Setting up songforge-mcp..."
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-if [ -z "${VOCAL_SYNTH_DIFFSINGER_HOME:-}" ]; then
+if [ -z "${SONGFORGE_DIFFSINGER_HOME:-}" ]; then
     echo ""
-    echo "VOCAL_SYNTH_DIFFSINGER_HOME is not set."
+    echo "SONGFORGE_DIFFSINGER_HOME is not set."
     echo "Clone openvpi/DiffSinger separately, install its own requirements.txt"
     echo "(PyTorch >=2.4.0 matched to your CUDA version), then set:"
-    echo "  export VOCAL_SYNTH_DIFFSINGER_HOME=/path/to/DiffSinger"
+    echo "  export SONGFORGE_DIFFSINGER_HOME=/path/to/DiffSinger"
     echo "See docs/INSTALLATION.md for full steps."
 fi
 
-echo "Done. Run 'vocal-synth-mcp' (inside .venv) to start the server."
+echo "Done. Run 'songforge-mcp' (inside .venv) to start the server."
 ```
 
 - [ ] **Step 2: Write `install.bat`**
@@ -1563,21 +1563,21 @@ setlocal
 
 cd /d "%~dp0"
 
-echo Setting up vocal-synth-mcp...
+echo Setting up songforge-mcp...
 python -m venv .venv
 call .venv\Scripts\activate.bat
 pip install -e ".[dev]"
 
-if "%VOCAL_SYNTH_DIFFSINGER_HOME%"=="" (
+if "%SONGFORGE_DIFFSINGER_HOME%"=="" (
     echo.
-    echo VOCAL_SYNTH_DIFFSINGER_HOME is not set.
+    echo SONGFORGE_DIFFSINGER_HOME is not set.
     echo Clone openvpi/DiffSinger separately, install its own requirements.txt
     echo ^(PyTorch ^>=2.4.0 matched to your CUDA version^), then set:
-    echo   setx VOCAL_SYNTH_DIFFSINGER_HOME "C:\path\to\DiffSinger"
+    echo   setx SONGFORGE_DIFFSINGER_HOME "C:\path\to\DiffSinger"
     echo See docs\INSTALLATION.md for full steps.
 )
 
-echo Done. Run 'vocal-synth-mcp' ^(inside .venv^) to start the server.
+echo Done. Run 'songforge-mcp' ^(inside .venv^) to start the server.
 ```
 
 - [ ] **Step 3: Verify both scripts are syntactically valid**
@@ -1615,14 +1615,14 @@ git commit -m "feat: add install scripts"
 ```markdown
 # Architecture
 
-How Vocal-Synth-MCP turns an explicit melody + lyrics into a vocal-only
+How SongForge-MCP turns an explicit melody + lyrics into a vocal-only
 WAV stem.
 
 ## Overview
 
 ```
 ┌──────────────┐    stdio    ┌───────────────────┐   subprocess   ┌──────────────┐
-│  MCP Client  │◄──────────►│  Vocal-Synth-MCP   │◄───────────────►│  DiffSinger  │
+│  MCP Client  │◄──────────►│  SongForge-MCP   │◄───────────────►│  DiffSinger  │
 │(AI assistant)│  (JSON-RPC) │      FastMCP       │  (.ds file +    │  (external   │
 └──────────────┘             └───────────────────┘   CLI stages)   │   checkout)  │
                                                                      └──────────────┘
@@ -1636,7 +1636,7 @@ app), DiffSinger's `scripts/infer.py` is a one-shot CLI — each
 ## Package layout
 
 ```
-vocal_synth_mcp/
+songforge_mcp/
 ├── main.py                 # FastMCP entry point
 ├── tool_registry.py        # Auto-discovers tools/ modules
 ├── diffsinger_client.py    # Two-stage subprocess wrapper
@@ -1644,7 +1644,7 @@ vocal_synth_mcp/
 │   └── 00_core.md          # Injected system-prompt instructions
 └── tools/                  # synthesize_vocal, list_voicebanks, validate_score
 
-vocal_synth_mcp_shared/
+songforge_mcp_shared/
 ├── constants.py            # Paths, timeouts, safety limits
 ├── error_codes.py          # VocalSynthMCPError + ErrorCode
 ├── protocol.py             # .ds build/validate/parse
@@ -1681,7 +1681,7 @@ design rationale.
 ./install.sh    # or install.bat on Windows
 ```
 
-This creates a `.venv` and installs `vocal-synth-mcp` plus its dev
+This creates a `.venv` and installs `songforge-mcp` plus its dev
 dependencies (`pytest`, `pytest-asyncio`, `g2p_en`).
 
 ## 2. Set up DiffSinger separately
@@ -1698,33 +1698,33 @@ pip install torch>=2.4.0   # match this to your CUDA version first — see pytor
 pip install -r requirements.txt
 ```
 
-Set `VOCAL_SYNTH_DIFFSINGER_HOME` to point at that clone:
+Set `SONGFORGE_DIFFSINGER_HOME` to point at that clone:
 
 ```bash
-export VOCAL_SYNTH_DIFFSINGER_HOME=/path/to/DiffSinger        # macOS/Linux
-setx VOCAL_SYNTH_DIFFSINGER_HOME "C:\path\to\DiffSinger"       # Windows
+export SONGFORGE_DIFFSINGER_HOME=/path/to/DiffSinger        # macOS/Linux
+setx SONGFORGE_DIFFSINGER_HOME "C:\path\to\DiffSinger"       # Windows
 ```
 
 ## 3. Install a voicebank
 
 v1 ships configured for the LUNAI Project's "Katyusha" voicebank (see
-`vocal_synth_mcp_shared/voicebanks.py` for the full license summary —
+`songforge_mcp_shared/voicebanks.py` for the full license summary —
 non-commercial use is fine with attribution, commercial use needs
 written per-character permission from LUNAI first).
 
 1. Download the voicebank from LUNAI Project's GitHub releases
    (`github.com/lunaiproject/lunai_singers`).
 2. Extract the DiffSinger checkpoint from its OpenUtau packaging into
-   `$VOCAL_SYNTH_DIFFSINGER_HOME/checkpoints/lunai_katyusha/` (the folder
+   `$SONGFORGE_DIFFSINGER_HOME/checkpoints/lunai_katyusha/` (the folder
    name must match the `experiment` value in `voicebanks.py`).
 3. To use a different voicebank instead, add a new entry to
-   `VOICEBANK_REGISTRY` in `vocal_synth_mcp_shared/voicebanks.py` — one
+   `VOICEBANK_REGISTRY` in `songforge_mcp_shared/voicebanks.py` — one
    dataclass instance, no other code changes needed.
 
 ## 4. Run
 
 ```bash
-vocal-synth-mcp
+songforge-mcp
 ```
 
 Add it to your MCP client config (Claude Desktop/Code) alongside
@@ -1768,12 +1768,12 @@ or raises `VocalSynthMCPError` (`VOICEBANK_NOT_FOUND`, `NOTE_OUT_OF_RANGE`,
 # Contributing
 
 - Repo layout mirrors `Reaper-MCP`/`AudacityMCP` — see `docs/ARCHITECTURE.md`.
-- Adding a tool: drop a `vocal_synth_mcp/tools/<name>_tools.py` module that
+- Adding a tool: drop a `songforge_mcp/tools/<name>_tools.py` module that
   defines `register(mcp)`. It's auto-discovered — no registry to edit by
   hand, other than adding the module name to `tool_registry.py`'s
   `_EXPECTED_MODULES` (a test enforces this stays in sync).
 - Every raised error must be a `VocalSynthMCPError` with a specific
-  `ErrorCode` from `vocal_synth_mcp_shared/error_codes.py` — never a bare
+  `ErrorCode` from `songforge_mcp_shared/error_codes.py` — never a bare
   exception.
 - No composition logic in this codebase — every tool takes fully explicit
   notes+lyrics. See `docs/2026-07-21-design.md` for why.
@@ -1810,7 +1810,7 @@ itself is a separate, non-pip-installable checkout you clone yourself.
 
 Manual end-to-end verification (real DiffSinger checkout + the LUNAI
 Katyusha voicebank) is tracked in
-`docs/superpowers/plans/2026-07-21-vocal-synth-mcp-v1.md`'s final task.
+`docs/superpowers/plans/2026-07-21-songforge-mcp-v1.md`'s final task.
 Fine-tuning on personal vocal libraries (v2) is deferred — see the design
 doc's "Voice sourcing" section before touching that.
 ```
@@ -1839,7 +1839,7 @@ model weights).
 Follow `docs/INSTALLATION.md` for real: clone `openvpi/DiffSinger`,
 install its requirements with a real PyTorch matched to your CUDA
 version, download and place the LUNAI Katyusha voicebank, set
-`VOCAL_SYNTH_DIFFSINGER_HOME`.
+`SONGFORGE_DIFFSINGER_HOME`.
 
 - [ ] **Step 2: Confirm the output-path convention**
 
@@ -1847,11 +1847,11 @@ Manually run DiffSinger's `scripts/infer.py variance` and `... acoustic`
 once by hand against a minimal `.ds` file to see where it actually writes
 the output WAV. Compare against `diffsinger_client.py`'s assumption
 (`infer_out/{render_id}.wav`) and fix that one line in
-`vocal_synth_mcp/diffsinger_client.py` if the real behavior differs.
+`songforge_mcp/diffsinger_client.py` if the real behavior differs.
 
 - [ ] **Step 3: Run a real synthesis through the MCP server**
 
-Start the server (`vocal-synth-mcp`) and, from an MCP client (or a small
+Start the server (`songforge-mcp`) and, from an MCP client (or a small
 manual script calling `synthesize_tools.register`'s tool function
 directly against the real `_client`), call `synthesize_vocal` with a
 short real phrase — e.g. 4-8 notes, a few words of lyric — at a real bpm.
@@ -1860,7 +1860,7 @@ short real phrase — e.g. 4-8 notes, a few words of lyric — at a real bpm.
 
 If the acoustic stage errors on phoneme lookup, the `g2p_en`-produced
 ARPAbet phonemes don't match Katyusha's dictionary — check
-`$VOCAL_SYNTH_DIFFSINGER_HOME/checkpoints/lunai_katyusha/` for a phoneme
+`$SONGFORGE_DIFFSINGER_HOME/checkpoints/lunai_katyusha/` for a phoneme
 dictionary file and adjust `protocol.py`'s phoneme mapping (or the "SP"
 rest-token convention) to match what's actually there.
 

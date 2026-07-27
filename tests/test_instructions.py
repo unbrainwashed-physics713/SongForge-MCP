@@ -1,4 +1,4 @@
-from vocal_synth_mcp.instructions import load_instructions
+from songforge_mcp.instructions import load_instructions
 
 
 def test_load_instructions_returns_nonempty_text():
@@ -6,8 +6,20 @@ def test_load_instructions_returns_nonempty_text():
     assert len(text) > 0
 
 
-def test_load_instructions_documents_the_note_format():
+def test_load_instructions_documents_the_tool_contract():
     text = load_instructions()
-    assert "duration_beats" in text
-    assert "validate_score" in text
-    assert "list_voicebanks" in text
+    assert "generate_vocal_track" in text
+    assert "check_vocal_track_status" in text
+    assert "split_vocal_stems" in text
+    assert "advanced_settings" in text
+
+
+def test_load_instructions_documents_the_polling_requirement():
+    text = load_instructions()
+    assert "job_id" in text
+    assert "say something to the user" in text.lower() or "narrat" in text.lower()
+
+
+def test_load_instructions_documents_the_real_artist_guardrail():
+    text = load_instructions()
+    assert "real artist" in text.lower()

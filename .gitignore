@@ -11,6 +11,7 @@ build/
 venv/
 .venv/
 env/
+.separator_env/
 
 # IDE
 .vscode/
@@ -34,11 +35,15 @@ htmlcov/
 # Worktrees
 .worktrees/
 
-# Model weights and generated audio — large, local-only
+# Model weights and generated audio — large, local-only. Also: never
+# publish trained LoRA/LoKr adapters (*.safetensors) — this repo clones
+# and drives upstream ACE-Step 1.5, it does not distribute trained
+# weights of any kind.
 *.ckpt
 *.pt
 *.pth
 *.onnx
+*.safetensors
 voicebanks/
 output/
 *.wav

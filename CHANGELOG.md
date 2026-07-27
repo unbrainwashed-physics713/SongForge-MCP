@@ -2,6 +2,165 @@
 
 ## Unreleased
 
+- **Added and exhaustively tested `remix_no_fsq`, closing out the Remix
+  mode investigation.** ACE-Step's "no_fsq" bypasses FSQ (finite scalar
+  quantization) of the source's structure in favor of continuous latents.
+  It raised objective tonal-clarity scores, which looked like a real fix
+  — but a real listening test showed why that metric was misleading: the
+  result was a near-exact reproduction of the source track, new lyrics
+  not used at all. This revealed the actual shape of Remix mode's
+  limitation on this checkpoint: every real setting swept (strength,
+  melody retention, fsq quantization) trades one failure (garbled vocals
+  that don't resemble the source) for the opposite one (a clean-sounding
+  but literal copy that ignores the new lyrics) — not a matter of finding
+  the right combination. Documented plainly in the tool's own docstrings
+  and injected instructions so this doesn't need re-discovering.
+- **Fixed a real cross-process race condition that was silently corrupting
+  generation quality:** `ensure_server_running`'s "is it up, launch if not"
+  check only guarded against duplicate launches within one process
+  (`asyncio.Lock`) — it did nothing to stop a second OS process (e.g. this
+  MCP server's own startup warm-up racing with a separately-run script)
+  from also concluding "not running yet" and launching a second ACE-Step
+  server. Confirmed happening for real: two `acestep_v15_pipeline.py`
+  processes were both running, both had loaded the ~9GB XL-SFT model onto
+  the same 12GB GPU (95% VRAM utilization), and the next real generation
+  timed out after 600s. Added a cross-process advisory lock (atomic
+  exclusive file creation, with stale-lock reclamation if a holder
+  crashed) so only one process ever launches the server; others wait for
+  it. Covered by new tests.
+- **Added `remix_melody_retention` to `generate_vocal_track`**, exposing
+  ACE-Step's "Cover Strength (Melody Retention)" as an experimental knob
+  for Remix mode's gibberish/garbled-vocal problem. Tested at 0.0
+  (ACE-Step's own documented "pure style transfer" value) — confirmed by
+  a real listening test to make things worse, not better ("music jumping
+  and glitching," no longer resembling the source either). Documented as
+  not a fix; left at ACE-Step's own default unless a specific reason to
+  deviate is confirmed. Combined with the Reference Audio trim fix and
+  Remix mode's already-confirmed problems, this closes out a full round
+  of testing: every audio-conditioned generation approach tried (Reference
+  Audio, Remix at multiple strength/retention combinations) measured and
+  sounded clearly worse than caption-only generation, which remains the
+  one reliable path.
+- **Corrected a documentation claim that turned out to be wrong when
+  actually verified against ACE-Step's source.** Every place in this
+  project (tool docstrings, injected instructions, docs/TOOLS.md,
+  docs/ARCHITECTURE.md, youtube_reference.py) claimed reference audio
+  controls "vocal timbre only, never content" — copied from ACE-Step's
+  own UI description without checking the actual mechanism. Tracing
+  `infer_refer_latent()` in ACE-Step's
+  `acestep/core/generation/handler/conditioning_embed.py` shows reference
+  audio is conditioned on via a real acoustic VAE latent of the reference
+  clip (same encoder used for real audio), not a narrow timbre-only
+  signal — so it plausibly affects instrumentation/production texture
+  too, not just voice character. Corrected everywhere, with an honest
+  flag that exact perceptual strength vs. `caption` hasn't been confirmed
+  by an actual listening test yet. Also added a missing workflow step:
+  the injected instructions never actually told the calling model to
+  attach a user-provided reference (local file or YouTube link) to the
+  `generate_vocal_track` call — only to describe reference audio's
+  semantics if used. That gap plausibly explains a real report of the
+  model verbally acknowledging a YouTube reference link ("great, I'll use
+  that as reference") without ever actually passing it through — the
+  server log showed zero trace of `reference_youtube_url` ever being
+  used, confirming the tool itself was never actually invoked with it.
+- **Fixed a real bug hit right after the `output_format` change went
+  live:** a completed generation failed with "could not read rendered
+  audio... unknown format: 3" even though the file existed and was fine.
+  `measure_wav_duration_seconds` used Python's stdlib `wave` module,
+  which only understands canonical integer-PCM WAV and cannot read
+  32-bit float PCM (format code 3) — which is what a real "WAV (16-bit)"
+  ACE-Step generation was observed actually landing as on disk. Switched
+  to `soundfile` (libsndfile-backed, already a dependency), which reads
+  float/extensible WAV correctly; verified directly against the exact
+  file that had failed (confirmed `subtype: FLOAT`, now reads its real
+  225.0s duration). Added a regression test covering this exact shape.
+- Added MCP server startup warm-up: `main.py` now kicks off ACE-Step's
+  cold-start as soon as the MCP server itself launches (i.e. as soon as
+  Claude Desktop starts it), via the same `ACEStepClient` instance/lock
+  `generate_vocal_track` uses (a separate instance would risk two
+  competing server launches racing for the same port), so the checkpoint
+  load happens in the background before the user even asks for a track
+  instead of blocking their first request.
+- **Added `output_format` to `generate_vocal_track`**, defaulting to
+  uncompressed `"wav"` instead of ACE-Step's own `"mp3"` UI default —
+  better for importing into a DAW for further editing. Also supports
+  `"flac"`, `"opus"`, `"aac"`, `"wav32"`. Required driving a previously
+  unused part of ACE-Step's UI (a global, localStorage-persisted Settings
+  panel preference, not a per-generation form field, and not a native
+  `<select>`) — confirmed correct end-to-end with a real generation that
+  produced an actual `.wav` file on disk, not just verified at the
+  UI-interaction level. See `docs/ARCHITECTURE.md` for the full story.
+- **Moved the default output location out of the OS temp directory** and
+  into an `output/` folder inside this repo checkout (override with
+  `SONGFORGE_OUTPUT_DIR`). Temp turned out to be a real problem: system
+  cleanup tools can purge it, backups typically skip it, and it isn't
+  somewhere a user would think to look for a track they want to keep —
+  found when a completed track had to be located via server logs instead
+  of just being where you'd expect. The default deliberately stays
+  inside this repo rather than pointing at any sibling project folder,
+  so a fresh standalone clone works the same way for anyone.
+- Added a `note` field to completed `generate_vocal_track`/`split_vocal_stems`
+  responses pointing at the real `audio_path`/stem paths on disk, as a
+  fallback for clients that don't render inline MCP `AudioContent` yet.
+  Found via a real case: Claude Desktop showed "unsupported format" for a
+  generation that had actually succeeded — confirmed via the server log
+  (no error, 2 content blocks returned) and the output file itself
+  (valid, playable, correct duration) — the failure was in the client's
+  rendering of the audio content block, not this server or the track.
+- **Fixed a real timeout bug found via live testing against Claude
+  Desktop:** a generation call was cancelled by the client after a fixed
+  240s with zero progress notifications ever delivered (MCP's
+  `report_progress` is a silent no-op without a client-supplied
+  `progressToken`, which Claude Desktop doesn't send). `generate_vocal_track`
+  now starts generation as a background job and returns a `job_id`
+  immediately; new `check_vocal_track_status(job_id, wait_seconds=25.0)`
+  tool long-polls it (blocks briefly server-side while still running, so
+  the calling model doesn't need its own delay between polls).
+- **Walked back over-eager narration** added alongside the above fix: an
+  initial version told the calling model to post a chat update on every
+  single poll, which per direct user feedback produced "way too much
+  feedback... spamming" and burned message/credit budget for no new
+  information. Instructions now call for a handful of messages per
+  generation at most (start, maybe one mid-way check-in, then done/error)
+  — the job/poll split was the actual fix for the timeout; narration
+  volume was a separate, over-corrected concern.
+- `split_vocal_stems` is now called only when the user explicitly asks
+  for the vocal/instrumental split out — not automatically after every
+  generation.
+- Fixed console windows flashing/appearing during `yt-dlp` and
+  `audio-separator` subprocess calls on Windows (`capture_output=True`
+  alone doesn't suppress this) via a new shared
+  `no_window_popen_kwargs()` helper, applied to every subprocess call in
+  this codebase.
+- Documented recommended system specs (GPU/VRAM, disk, Python, OS) in
+  `docs/INSTALLATION.md` and `README.md`, sourced from ACE-Step 1.5's own
+  published requirements rather than estimated.
+- Both tools now return generated/separated audio inline as playable MCP
+  `AudioContent`, not just a file path string.
+- `split_vocal_stems`' `audio_path` is now restricted to this server's
+  own output folder (`Paths.OUTPUT_DIR`) — it can no longer be pointed at
+  an arbitrary file elsewhere on disk. `reference_audio_path` gained
+  real validation (must exist, must have an audio extension, must parse
+  as genuine audio content via `soundfile`) without that folder
+  restriction, since pointing at a personal sample library anywhere on
+  disk is its legitimate use.
+- Cross-platform support: added `install.sh` (Linux/macOS) alongside
+  `install.bat`. Replaced the PowerShell `Start-Process`-based detached
+  server launch in `acestep_client.py` with native Python `subprocess`
+  detachment flags (also removes an f-string shell-injection surface).
+  `.venv` layout and the separator executable name are now OS-detected
+  rather than hardcoded to Windows paths.
+
+## 0.2.0
+
+- Full rewrite around ACE-Step 1.5 (Playwright-driven Gradio UI
+  automation) replacing the original DiffSinger-based tool contract
+  entirely. New tools: `generate_vocal_track`, `split_vocal_stems`.
+  DiffSinger's note/phoneme-based approach is not carried forward in any
+  form — see `docs/ARCHITECTURE.md` for why.
+
+## 0.1.0
+
 - Initial v1: `synthesize_vocal`, `list_voicebanks`, `validate_score` MCP
   tools. Subprocess integration with a separately-cloned openvpi/DiffSinger
   checkout. LUNAI Project's "Katyusha" voicebank as the configured default.

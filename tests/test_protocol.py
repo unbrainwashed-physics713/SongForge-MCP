@@ -1,114 +1,53 @@
+import os
 import wave
 
 import pytest
+import soundfile as sf
 
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
-from vocal_synth_mcp_shared.protocol import (
-    NoteEvent,
-    build_ds_file,
+from songforge_mcp_shared import constants
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.protocol import (
     measure_wav_duration_seconds,
-    midi_to_note_name,
-    parse_stage_output,
-    validate_notes,
+    validate_audio_file_path,
+    validate_caption,
+    validate_lyrics,
+    validate_output_dir_audio_path,
+    validate_output_format,
 )
 
 
-def test_midi_to_note_name_middle_c():
-    assert midi_to_note_name(60) == "C4"
+def _write_wav(path):
+    with wave.open(str(path), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(44100)
+        wf.writeframes(b"\x00\x00" * 44100)
 
 
-def test_midi_to_note_name_sharp():
-    assert midi_to_note_name(61) == "C#4"
-
-
-def test_validate_notes_rejects_empty_list():
+def test_validate_caption_rejects_empty():
     with pytest.raises(VocalSynthMCPError) as exc_info:
-        validate_notes([])
+        validate_caption("")
     assert exc_info.value.code == ErrorCode.MISSING_PARAMETER
 
 
-def test_validate_notes_rejects_all_rests():
-    notes = [NoteEvent(pitch=-1, duration_beats=1.0, lyric=None)]
+def test_validate_caption_accepts_normal_text():
+    validate_caption("melodic dubstep, female vocals, dreamy, 150 BPM")  # must not raise
+
+
+def test_validate_lyrics_rejects_empty():
     with pytest.raises(VocalSynthMCPError) as exc_info:
-        validate_notes(notes)
+        validate_lyrics("")
     assert exc_info.value.code == ErrorCode.MISSING_PARAMETER
 
 
-def test_validate_notes_rejects_out_of_range_pitch():
-    notes = [NoteEvent(pitch=200, duration_beats=1.0, lyric="hi")]
+def test_validate_lyrics_requires_structure_tag():
     with pytest.raises(VocalSynthMCPError) as exc_info:
-        validate_notes(notes)
-    assert exc_info.value.code == ErrorCode.NOTE_OUT_OF_RANGE
-
-
-def test_validate_notes_rejects_zero_duration():
-    notes = [NoteEvent(pitch=60, duration_beats=0.0, lyric="hi")]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
-        validate_notes(notes)
+        validate_lyrics("just some words with no structure tags at all")
     assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
 
-def test_validate_notes_rejects_rest_with_lyric():
-    notes = [NoteEvent(pitch=-1, duration_beats=1.0, lyric="hi")]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
-        validate_notes(notes)
-    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
-
-
-def test_validate_notes_rejects_pitched_note_without_lyric():
-    notes = [
-        NoteEvent(pitch=60, duration_beats=1.0, lyric="hi"),
-        NoteEvent(pitch=62, duration_beats=1.0, lyric=None),
-    ]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
-        validate_notes(notes)
-    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
-
-
-def test_validate_notes_accepts_a_valid_sequence():
-    notes = [
-        NoteEvent(pitch=60, duration_beats=1.0, lyric="hel"),
-        NoteEvent(pitch=-1, duration_beats=0.5, lyric=None),
-        NoteEvent(pitch=62, duration_beats=1.0, lyric="lo"),
-    ]
-    validate_notes(notes)  # must not raise
-
-
-def test_build_ds_file_produces_matching_length_sequences():
-    notes = [
-        NoteEvent(pitch=60, duration_beats=1.0, lyric="hi"),
-        NoteEvent(pitch=-1, duration_beats=1.0, lyric=None),
-    ]
-    ds = build_ds_file(notes, bpm=120.0)
-    note_seq = ds["note_seq"].split()
-    note_dur = ds["note_dur"].split()
-    assert note_seq == ["C4", "rest"]
-    assert len(note_dur) == 2
-    # 1 beat at 120bpm = 0.5s
-    assert float(note_dur[0]) == pytest.approx(0.5)
-
-
-def test_build_ds_file_rejects_non_positive_bpm():
-    notes = [NoteEvent(pitch=60, duration_beats=1.0, lyric="hi")]
-    with pytest.raises(VocalSynthMCPError) as exc_info:
-        build_ds_file(notes, bpm=0.0)
-    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
-
-
-def test_build_ds_file_includes_optional_expressive_params():
-    notes = [NoteEvent(pitch=60, duration_beats=1.0, lyric="hi")]
-    ds = build_ds_file(notes, bpm=120.0, expressive_params={"f0_seq": "220 220"})
-    assert ds["f0_seq"] == "220 220"
-
-
-def test_parse_stage_output_extracts_warning_lines():
-    stderr = "loading checkpoint...\nWarning: OOV phoneme for 'xyz'\ndone\n"
-    warnings = parse_stage_output(stdout="", stderr=stderr, stage="variance")
-    assert warnings == ["[variance] Warning: OOV phoneme for 'xyz'"]
-
-
-def test_parse_stage_output_returns_empty_list_when_no_warnings():
-    assert parse_stage_output(stdout="ok", stderr="done\n", stage="acoustic") == []
+def test_validate_lyrics_accepts_structured_lyrics():
+    validate_lyrics("[verse]\nsome original words\n[chorus]\nmore original words")  # must not raise
 
 
 def test_measure_wav_duration_seconds(tmp_path):
@@ -118,12 +57,91 @@ def test_measure_wav_duration_seconds(tmp_path):
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(framerate)
-        wf.writeframes(b"\x00\x00" * framerate)  # exactly 1 second
+        wf.writeframes(b"\x00\x00" * framerate)
     assert measure_wav_duration_seconds(path) == pytest.approx(1.0)
 
 
-def test_measure_wav_duration_seconds_raises_on_missing_file(tmp_path):
-    path = str(tmp_path / "does_not_exist.wav")
+def test_measure_wav_duration_seconds_handles_32bit_float_wav(tmp_path):
+    """Regression test: a real ACE-Step "WAV (16-bit)" generation was
+    observed actually landing on disk as 32-bit float PCM (format code
+    3). The stdlib `wave` module can only read canonical integer PCM and
+    raised "unknown format: 3" on this exact file shape — this is why
+    measure_wav_duration_seconds reads via soundfile instead."""
+    import numpy as np
+
+    path = str(tmp_path / "float32.wav")
+    samplerate = 44100
+    sf.write(path, np.zeros(samplerate, dtype="float32"), samplerate, subtype="FLOAT")
+    assert measure_wav_duration_seconds(path) == pytest.approx(1.0)
+
+
+def test_measure_wav_duration_seconds_raises_for_missing_file():
     with pytest.raises(VocalSynthMCPError) as exc_info:
-        measure_wav_duration_seconds(path)
+        measure_wav_duration_seconds("does_not_exist.wav")
     assert exc_info.value.code == ErrorCode.SYNTHESIS_FAILED
+
+
+def test_validate_audio_file_path_rejects_missing_file(tmp_path):
+    with pytest.raises(VocalSynthMCPError) as exc_info:
+        validate_audio_file_path(str(tmp_path / "nope.wav"), param_name="audio_path")
+    assert exc_info.value.code == ErrorCode.FILE_NOT_FOUND
+
+
+def test_validate_output_format_accepts_wav():
+    assert validate_output_format("wav") == "wav"
+
+
+def test_validate_output_format_normalizes_case():
+    assert validate_output_format("WAV") == "wav"
+
+
+def test_validate_output_format_rejects_unsupported_value():
+    with pytest.raises(VocalSynthMCPError) as exc_info:
+        validate_output_format("ogg")
+    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+
+
+def test_validate_audio_file_path_rejects_bad_extension(tmp_path):
+    path = tmp_path / "not_audio.txt"
+    path.write_text("hello")
+    with pytest.raises(VocalSynthMCPError) as exc_info:
+        validate_audio_file_path(str(path), param_name="audio_path")
+    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+
+
+def test_validate_audio_file_path_rejects_renamed_non_audio_file(tmp_path):
+    path = tmp_path / "fake.wav"
+    path.write_text("this is not really a wav file")
+    with pytest.raises(VocalSynthMCPError) as exc_info:
+        validate_audio_file_path(str(path), param_name="audio_path")
+    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+
+
+def test_validate_audio_file_path_accepts_real_wav_anywhere(tmp_path):
+    path = tmp_path / "real.wav"
+    _write_wav(path)
+    resolved = validate_audio_file_path(str(path), param_name="audio_path")
+    assert os.path.isfile(resolved)
+
+
+def test_validate_output_dir_audio_path_accepts_file_inside_output_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(constants.Paths, "OUTPUT_DIR", str(tmp_path))
+    path = tmp_path / "render.wav"
+    _write_wav(path)
+    resolved = validate_output_dir_audio_path(str(path), param_name="audio_path")
+    assert os.path.isfile(resolved)
+
+
+def test_validate_output_dir_audio_path_rejects_file_outside_output_dir(tmp_path, monkeypatch):
+    output_dir = tmp_path / "renders"
+    output_dir.mkdir()
+    monkeypatch.setattr(constants.Paths, "OUTPUT_DIR", str(output_dir))
+
+    outside_dir = tmp_path / "elsewhere"
+    outside_dir.mkdir()
+    path = outside_dir / "sneaky.wav"
+    _write_wav(path)
+
+    with pytest.raises(VocalSynthMCPError) as exc_info:
+        validate_output_dir_audio_path(str(path), param_name="audio_path")
+    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER

@@ -1,17 +1,15 @@
-import pytest
-
-from vocal_synth_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
+from songforge_mcp_shared.error_codes import ErrorCode, VocalSynthMCPError
 
 
 def test_error_carries_code_and_message():
-    err = VocalSynthMCPError(ErrorCode.NOTE_OUT_OF_RANGE, "pitch 200 is not a valid MIDI note")
-    assert err.code == ErrorCode.NOTE_OUT_OF_RANGE
-    assert err.message == "pitch 200 is not a valid MIDI note"
+    err = VocalSynthMCPError(ErrorCode.INVALID_PARAMETER, "caption must not be empty")
+    assert err.code == ErrorCode.INVALID_PARAMETER
+    assert err.message == "caption must not be empty"
 
 
 def test_error_string_includes_code_name_and_value():
-    err = VocalSynthMCPError(ErrorCode.VOICEBANK_NOT_FOUND, "unknown voicebank 'nope'")
-    assert str(err) == "[VOICEBANK_NOT_FOUND (3006)] unknown voicebank 'nope'"
+    err = VocalSynthMCPError(ErrorCode.FILE_NOT_FOUND, "reference audio not found")
+    assert str(err) == "[FILE_NOT_FOUND (3008)] reference audio not found"
 
 
 def test_error_codes_are_unique():
