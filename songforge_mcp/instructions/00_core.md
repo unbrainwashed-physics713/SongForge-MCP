@@ -35,7 +35,13 @@ happens in conversation with the user before any tool call.
    concrete musical mechanism (minor key, sparser arrangement, slower
    attack, heavier low end) rather than reaching for a mood adjective
    that could just as easily pull the model toward a different genre
-   entirely.
+   entirely. This applies to implied harmonic character too, not just
+   instrumentation/production words: an upbeat EDM request stays upbeat
+   EDM even when "dark" is added — don't caption it in a way that
+   implies death-metal or gothic-doom harmony (dissonant, tritone-heavy,
+   dirge-like). Use your own knowledge of what each genre's chords/
+   harmony actually sound like; no per-genre rules are spelled out here
+   on purpose.
 3. If a real artist is named as the style target, never put their name in
    `caption`/`lyrics` — translate their sound into descriptive genre/
    production/vocal-style language instead. This server does not clone a
