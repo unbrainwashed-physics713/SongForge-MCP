@@ -74,12 +74,16 @@ happens in conversation with the user before any tool call.
    other (a near-exact copy of the source).
 5. Call `generate_vocal_track` with the confirmed caption/lyrics (plus any
    reference). It returns a `job_id` immediately without waiting for
-   generation. Tell the user generation started in one short message, then
-   poll `check_vocal_track_status(job_id)` — it already waits briefly
-   server-side, so no extra delay needed. **Stay quiet while polling**;
-   only speak again after a couple of minutes with no result, or once it
-   reaches `"complete"`/`"error"`. Narrating every poll wastes the user's
-   budget for no benefit.
+   generation. Tell the user generation started in one short message,
+   then **call `check_vocal_track_status(job_id)` again and again in a
+   loop — it already waits briefly server-side each call, so no extra
+   delay needed — until it returns `"complete"` or `"error"`. A single
+   call that comes back `"running"` is not a stopping point; call it
+   again.** Stay quiet *between* those calls (don't narrate every single
+   "still running"), but never stop calling and never end the turn
+   without a final outcome message once you start this loop — a job
+   that finishes with nothing said back to the user is a failure on
+   your part even when the job itself succeeded.
 
    The `progress` fraction commonly plateaus around 0.5 for several
    minutes before jumping straight to complete — this value comes
@@ -113,10 +117,15 @@ happens in conversation with the user before any tool call.
    `check_vocal_track_status`, with no path to relay between two tool
    calls. `split_vocal_stems` still exists for splitting a file from an
    earlier, already-completed job — **it also returns a `job_id`
-   immediately and must be polled with `check_vocal_track_status` exactly
-   like `generate_vocal_track`, not awaited as a single blocking call.**
-   It only accepts files this server already produced. Splitting is
-   idempotent — calling it again on a file already split returns the
+   immediately and must be polled in the same loop-until-terminal-status
+   way described in step 5, not awaited as a single blocking call and
+   not left after one "running" response.** A real reported failure:
+   the split genuinely ran and produced correct files, but nothing was
+   ever said back to the user because polling stopped after one call —
+   from the user's side that's indistinguishable from the tool silently
+   doing nothing. It only accepts files this server already produced.
+   Splitting is idempotent — calling it again on a file already split
+   returns the
    existing stems in well under a second instead of re-running
    separation, so if you've lost track of an earlier vocals_path/
    instrumental_path (e.g. a long conversation), it is always cheap and

@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Diagnosed a real "it just stopped" complaint on a live `split_vocal_stems`
+  call via Claude Desktop's own MCP server logs, not speculation.** The
+  logs (`mcp-server-songforge.log`) showed the calling model genuinely
+  started the split and polled `check_vocal_track_status` 6 times over
+  ~2 minutes, each call getting a valid server response — then simply
+  stopped calling it. No stem files were ever produced on disk for that
+  track, confirming the job was abandoned mid-poll (most likely still
+  legitimately running, given separation's own subprocess timeout is
+  180s and only ~120s of polling had elapsed), not a server-side crash
+  or silent failure. Root cause: this project's own polling instructions
+  said to "poll" and "stay quiet while polling" without explicitly
+  stating this must be a loop that continues until a terminal
+  `"complete"`/`"error"` status — worded ambiguously enough that a
+  single poll followed by silence was a plausible (mis)reading.
+  Rewrote both `generate_vocal_track`'s and `split_vocal_stems`'
+  instructions to state explicitly: call `check_vocal_track_status`
+  again and again until a terminal status, a `"running"` result is
+  never a stopping point, and ending a turn without a final outcome
+  message is a failure even when the underlying job succeeded.
 - **Diagnosed a real "wrong mood" complaint on a live generation, not a
   hypothetical.** A track generated for a deliberately dark, minor-key
   concept ("Hollow") came back sounding wrong. Measured with this
