@@ -1,4 +1,29 @@
-# SongForge-MCP
+<h1 align="center">SongForge-MCP</h1>
+
+<p align="center">
+  <strong>Generate original AI music through Claude, powered by ACE-Step 1.5</strong>
+</p>
+
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="License" /></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple.svg" alt="MCP Compatible" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.0-orange.svg" alt="v0.2.0" /></a>
+  <a href="https://github.com/xDarkzx/SongForge-MCP/actions/workflows/ci.yml"><img src="https://github.com/xDarkzx/SongForge-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/ace-step/ACE-Step-1.5"><img src="https://img.shields.io/badge/GPU-12GB%2B%20VRAM-red.svg" alt="GPU 12GB+ VRAM" /></a>
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &bull;
+  <a href="#features">Features</a> &bull;
+  <a href="docs/TOOLS.md">Tools Reference</a> &bull;
+  <a href="docs/ARCHITECTURE.md">Architecture</a> &bull;
+  <a href="CHANGELOG.md">Changelog</a> &bull;
+  <a href="CONTRIBUTING.md">Contributing</a> &bull;
+  <a href="docs/INSTALLATION.md#troubleshooting">Troubleshooting</a>
+</p>
+
+---
 
 **Ask Claude for a song in plain English — "an upbeat pop track about
 road trips, with lyrics about freedom" — and get back a real, finished
@@ -37,7 +62,7 @@ YouTube to fetch the audio — nothing else in this server makes any
 outbound network call. Everything else, including every generation
 itself, stays entirely local.
 
-## What this gives you
+## Features
 
 - **`generate_vocal_track`** — produce a complete original track (vocals
   and instrumentation together) from a style description and full
@@ -57,7 +82,7 @@ itself, stays entirely local.
   An `advanced_settings` override is available for the rare case where a
   specific ACE-Step setting genuinely needs to change.
 
-## Getting started
+## Quick Start
 
 **Recommended hardware:** an NVIDIA GPU with **≥12GB VRAM** (≥20GB to run
 without CPU offload), plus **~40GB free disk space** for the ACE-Step 1.5
