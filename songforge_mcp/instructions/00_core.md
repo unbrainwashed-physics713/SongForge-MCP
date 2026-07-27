@@ -1,9 +1,11 @@
 # SongForge-MCP
 
-Generates full EDM/vocal tracks via ACE-Step 1.5 — singing performance and
-instrumental together, from a caption + full lyrics. This server never
-invents lyrics or musical direction; that reasoning happens in conversation
-with the user before any tool call.
+Generates full vocal/music tracks via ACE-Step 1.5, across any genre it
+supports (confirmed genuinely broad — pop, rock, trap, R&B, folk, and
+many regional styles beyond EDM, not an EDM-only model) — singing
+performance and instrumental together, from a caption + full lyrics.
+This server never invents lyrics or musical direction; that reasoning
+happens in conversation with the user before any tool call.
 
 ## Workflow
 
@@ -20,6 +22,20 @@ with the user before any tool call.
    (or use one the user gives) and pass it as `song_title` on the
    `generate_vocal_track` call — it names the output file on disk instead
    of leaving it as a bare timestamp/UUID.
+
+   **A mood word must be expressed through the requested genre, not
+   layered on top of it as an independent instruction.** "Dark" applied
+   to "melodic dubstep" should stay melodic dubstep — minor key, heavy
+   sub-bass, moodier pads, a heavier drop — not drift toward an
+   unrelated genre's vocabulary (gothic, horror-score, dark ambient)
+   just because that vocabulary matches the mood word better in
+   isolation. Lead the caption with the actual genre/subgenre tags, then
+   add mood/production tags that are idiomatic *within* that genre — if
+   unsure what "dark" sounds like inside a given genre, describe the
+   concrete musical mechanism (minor key, sparser arrangement, slower
+   attack, heavier low end) rather than reaching for a mood adjective
+   that could just as easily pull the model toward a different genre
+   entirely.
 3. If a real artist is named as the style target, never put their name in
    `caption`/`lyrics` — translate their sound into descriptive genre/
    production/vocal-style language instead. This server does not clone a
