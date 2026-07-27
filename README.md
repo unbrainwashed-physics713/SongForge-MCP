@@ -24,6 +24,19 @@ you describe the track you want in conversation, and Claude calls this
 server to produce it, handling every underlying setting correctly on
 your behalf. You never touch a settings panel.
 
+## Runs entirely on your own machine
+
+There is no cloud service behind this, no subscription, and no account
+to create. Generation happens on your own GPU, using models downloaded
+once to your own disk. Your prompts, lyrics, and generated audio are
+never sent to any third-party server for processing, and nothing about
+your usage is logged or transmitted anywhere. The one exception is
+strictly opt-in: if you point a generation at a YouTube link for
+reference-audio style matching, that specific request naturally reaches
+YouTube to fetch the audio — nothing else in this server makes any
+outbound network call. Everything else, including every generation
+itself, stays entirely local.
+
 ## What this gives you
 
 - **`generate_vocal_track`** — produce a complete original track (vocals
@@ -64,6 +77,16 @@ published requirements, not a guess.
    (or use a different MCP client), see `docs/INSTALLATION.md`.
 3. Ask for a track in plain language. See [`docs/TOOLS.md`](docs/TOOLS.md)
    for the full tool reference and example requests.
+
+## Works well alongside Reaper-MCP
+
+If your production workflow is built around REAPER, the vocal and
+instrumental stems this server produces are well suited to import
+directly into a REAPER project using [Reaper-MCP](https://github.com/xDarkzx/Reaper-MCP),
+a companion MCP server for AI-assisted composition, mixing, and
+mastering in REAPER. Both servers can be connected to the same Claude
+Desktop session, allowing a track to be generated here and then placed,
+arranged, and produced further without leaving the conversation.
 
 ## Documentation
 
