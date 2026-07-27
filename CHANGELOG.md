@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Diagnosed a real "wrong mood" complaint on a live generation, not a
+  hypothetical.** A track generated for a deliberately dark, minor-key
+  concept ("Hollow") came back sounding wrong. Measured with this
+  server's own `analyze_audio`: BPM 161.5 against a ~150 half-time
+  target, and — the real culprit — key landed on **C# major** against
+  an intended D/F **minor**. A full major/minor flip, not an adjacent-key
+  miss. Ruled out corruption first (no clipping, no dropouts, normal
+  peak/RMS) before concluding it was a musical mismatch, not a broken
+  render. Root cause: ACE-Step's `Key`/`BPM` fields are documented
+  elsewhere in this project as soft hints, not hard constraints, but
+  this is the first *measured* case of a full modality flip rather than
+  a nearby-key miss. Added an instruction requiring explicit
+  `advanced_settings` for BPM/key whenever a specific target was agreed
+  on (not just mood language in the caption), plus a mandatory
+  post-generation `analyze_reference_audio` check against the intended
+  target before presenting a result as done.
+
 - **Added and exhaustively tested `remix_no_fsq`, closing out the Remix
   mode investigation.** ACE-Step's "no_fsq" bypasses FSQ (finite scalar
   quantization) of the source's structure in favor of continuous latents.

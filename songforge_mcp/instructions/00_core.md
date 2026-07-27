@@ -54,6 +54,23 @@ with the user before any tool call.
    not as a hedge ("this can happen"). Treat it as a real problem only if
    `check_vocal_track_status` itself errors or stops responding, or
    elapsed time badly exceeds this server's generation timeout.
+5.5. **If a specific BPM or key was part of the agreed creative direction
+   (not just a mood description), set it explicitly via
+   `advanced_settings` (e.g. `{"BPM (Beats Per Minute)": 150, "Key": "F minor"}`)
+   — don't rely on caption prose alone ("dark", "minor-key feel") to get
+   there; ACE-Step doesn't reliably infer tempo/key from mood language.**
+   Even then, treat the result as unverified: ACE-Step's `Key`/`BPM`
+   fields are soft hints, not hard constraints, and have been observed
+   landing on a completely different key/mode (not just an adjacent one)
+   even when set explicitly — a real, measured case, not a hypothetical.
+   Once a job completes, call `analyze_reference_audio` on the finished
+   `audio_path` and compare its measured `bpm`/`key`/`mode` against what
+   was actually intended **before** telling the user it's done. If they
+   don't reasonably match (especially a major/minor mismatch — this
+   flips the entire emotional character of a track, not a minor
+   deviation), say so plainly and offer to regenerate rather than
+   presenting a mismatched result as a finished deliverable and leaving
+   the user to catch it by ear.
 6. Only split out the vocal if the user explicitly asks for it — never
    automatically. The full mix is the default deliverable. When you do
    need the stems, **prefer `generate_vocal_track(..., split_stems=True)`
