@@ -62,3 +62,27 @@ def test_no_window_popen_kwargs_sets_creationflags_on_windows(monkeypatch):
 def test_no_window_popen_kwargs_empty_on_posix(monkeypatch):
     monkeypatch.setattr(constants.platform, "system", lambda: "Linux")
     assert constants.no_window_popen_kwargs() == {}
+
+
+def test_open_with_default_app_uses_startfile_on_windows(monkeypatch):
+    monkeypatch.setattr(constants.platform, "system", lambda: "Windows")
+    calls = []
+    monkeypatch.setattr(constants.os, "startfile", lambda p: calls.append(p), raising=False)
+    constants.open_with_default_app("C:\\some\\track.wav")
+    assert calls == ["C:\\some\\track.wav"]
+
+
+def test_open_with_default_app_uses_open_on_macos(monkeypatch):
+    monkeypatch.setattr(constants.platform, "system", lambda: "Darwin")
+    calls = []
+    monkeypatch.setattr(constants.subprocess, "Popen", lambda args: calls.append(args))
+    constants.open_with_default_app("/some/track.wav")
+    assert calls == [["open", "/some/track.wav"]]
+
+
+def test_open_with_default_app_uses_xdg_open_on_linux(monkeypatch):
+    monkeypatch.setattr(constants.platform, "system", lambda: "Linux")
+    calls = []
+    monkeypatch.setattr(constants.subprocess, "Popen", lambda args: calls.append(args))
+    constants.open_with_default_app("/some/track.wav")
+    assert calls == [["xdg-open", "/some/track.wav"]]

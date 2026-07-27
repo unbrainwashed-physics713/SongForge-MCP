@@ -53,6 +53,26 @@ def no_window_popen_kwargs() -> dict:
     return {}
 
 
+def open_with_default_app(path: str) -> None:
+    """Opens a file with the OS's default associated application - used
+    to auto-play a completed generation so the user doesn't have to find
+    it in File Explorer themselves. Best-effort by design: callers must
+    not let a failure here break an otherwise-successful tool response,
+    since the file path is always returned regardless and remains the
+    real result - this is a convenience on top of that, not a
+    replacement for it. `os.startfile` is Windows-only in the standard
+    library and resolves the OS's actual default app the same way
+    double-clicking the file would; `open`/`xdg-open` cover macOS/Linux
+    the same way."""
+    system = platform.system()
+    if system == "Windows":
+        os.startfile(path)
+    elif system == "Darwin":
+        subprocess.Popen(["open", path])
+    else:
+        subprocess.Popen(["xdg-open", path])
+
+
 class Paths:
     # Root of a separately-cloned ace-step/ACE-Step-1.5 checkout. Must be
     # set by the user at install time (see docs/INSTALLATION.md) — ACE-Step

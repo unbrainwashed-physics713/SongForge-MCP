@@ -132,7 +132,9 @@ def test_generate_vocal_track_job_completes_and_status_reports_it(monkeypatch):
         await on_progress(0.5, "halfway")
         return {"audio_path": "/fake/render.mp3", "generation_seconds": 1.23}
 
+    opened = []
     monkeypatch.setattr(generate_tools._client, "generate", fake_generate)
+    monkeypatch.setattr(generate_tools, "open_with_default_app", opened.append)
 
     async def scenario():
         result = await gen_tool.fn(caption="melodic dubstep", lyrics="[verse]\nwords", ctx=_StubContext())
@@ -143,6 +145,7 @@ def test_generate_vocal_track_job_completes_and_status_reports_it(monkeypatch):
     status = asyncio.run(scenario())
     assert status[0]["status"] == "complete"
     assert status[0]["audio_path"] == "/fake/render.mp3"
+    assert opened == ["/fake/render.mp3"]
 
 
 def test_generate_vocal_track_split_stems_includes_stem_paths_in_completion(monkeypatch):
@@ -157,9 +160,11 @@ def test_generate_vocal_track_split_stems_includes_stem_paths_in_completion(monk
         assert audio_path == "/fake/render.wav"
         return {"vocals_path": "/fake/vocals.wav", "instrumental_path": "/fake/instrumental.wav"}
 
+    opened = []
     monkeypatch.setattr(generate_tools._client, "generate", fake_generate)
     monkeypatch.setattr(generate_tools._separator_client, "separate", fake_separate)
     monkeypatch.setattr(generate_tools, "measure_wav_duration_seconds", lambda path: 30.0)
+    monkeypatch.setattr(generate_tools, "open_with_default_app", opened.append)
 
     async def scenario():
         result = await gen_tool.fn(
@@ -172,7 +177,35 @@ def test_generate_vocal_track_split_stems_includes_stem_paths_in_completion(monk
     status = asyncio.run(scenario())
     assert status[0]["status"] == "complete"
     assert status[0]["vocals_path"] == "/fake/vocals.wav"
-    assert status[0]["instrumental_path"] == "/fake/instrumental.wav"
+    # Auto-launches the full mix, not the stems - opening both stems at once
+    # would mean two overlapping audio players fighting for playback.
+    assert opened == ["/fake/render.wav"]
+
+
+def test_generate_vocal_track_still_completes_if_auto_launch_fails(monkeypatch):
+    mcp = _register()
+    gen_tool = mcp._tool_manager.get_tool("generate_vocal_track")
+    status_tool = mcp._tool_manager.get_tool("check_vocal_track_status")
+
+    async def fake_generate(*, caption, lyrics, reference_audio_path, advanced_settings, output_format, remix_source_path, remix_strength, remix_melody_retention, remix_no_fsq, song_title, lora_path, on_progress):
+        return {"audio_path": "/fake/render.wav", "generation_seconds": 1.0}
+
+    def failing_open(path):
+        raise OSError("no associated application")
+
+    monkeypatch.setattr(generate_tools._client, "generate", fake_generate)
+    monkeypatch.setattr(generate_tools, "measure_wav_duration_seconds", lambda path: 30.0)
+    monkeypatch.setattr(generate_tools, "open_with_default_app", failing_open)
+
+    async def scenario():
+        result = await gen_tool.fn(caption="melodic dubstep", lyrics="[verse]\nwords", ctx=_StubContext())
+        for _ in range(50):
+            await asyncio.sleep(0)
+        return await status_tool.fn(job_id=result["job_id"])
+
+    status = asyncio.run(scenario())
+    assert status[0]["status"] == "complete"
+    assert status[0]["audio_path"] == "/fake/render.wav"
 
 
 def test_generate_vocal_track_without_split_stems_omits_stem_paths(monkeypatch):

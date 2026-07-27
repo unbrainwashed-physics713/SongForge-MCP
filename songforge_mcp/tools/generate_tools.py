@@ -5,6 +5,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from songforge_mcp.acestep_client import ACEStepClient
 from songforge_mcp.shared_state import jobs as _jobs, separator_client as _separator_client
 from songforge_mcp.youtube_reference import YouTubeReferenceClient
+from songforge_mcp_shared.constants import open_with_default_app
 from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import (
     measure_wav_duration_seconds,
@@ -210,6 +211,18 @@ def register(mcp: FastMCP):
                     stems = await asyncio.to_thread(_separator_client.separate, result["audio_path"])
                     job.result["vocals_path"] = stems["vocals_path"]
                     job.result["instrumental_path"] = stems["instrumental_path"]
+
+                try:
+                    open_with_default_app(result["audio_path"])
+                except Exception:
+                    # Best-effort convenience, not the actual deliverable -
+                    # the real file path is already in job.result regardless
+                    # of whether this succeeds, and inline MCP AudioContent
+                    # playback was already tried and removed for causing
+                    # worse failures than this (see docs/ARCHITECTURE.md) -
+                    # a failure to auto-launch a player must not be allowed
+                    # to turn a successful generation into a reported error.
+                    pass
 
                 job.progress = 1.0
                 job.message = "Generation complete"
