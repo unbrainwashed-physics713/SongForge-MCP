@@ -23,25 +23,26 @@ happens in conversation with the user before any tool call.
    `generate_vocal_track` call — it names the output file on disk instead
    of leaving it as a bare timestamp/UUID.
 
-   **A mood word must be expressed through the requested genre, not
-   layered on top of it as an independent instruction.** "Dark" applied
-   to "melodic dubstep" should stay melodic dubstep — minor key, heavy
-   sub-bass, moodier pads, a heavier drop — not drift toward an
-   unrelated genre's vocabulary (gothic, horror-score, dark ambient)
-   just because that vocabulary matches the mood word better in
-   isolation. Lead the caption with the actual genre/subgenre tags, then
-   add mood/production tags that are idiomatic *within* that genre — if
-   unsure what "dark" sounds like inside a given genre, describe the
-   concrete musical mechanism (minor key, sparser arrangement, slower
-   attack, heavier low end) rather than reaching for a mood adjective
-   that could just as easily pull the model toward a different genre
-   entirely. This applies to implied harmonic character too, not just
-   instrumentation/production words: an upbeat EDM request stays upbeat
-   EDM even when "dark" is added — don't caption it in a way that
-   implies death-metal or gothic-doom harmony (dissonant, tritone-heavy,
-   dirge-like). Use your own knowledge of what each genre's chords/
-   harmony actually sound like; no per-genre rules are spelled out here
-   on purpose.
+   **Any mood/emotion word (dark, gloomy, moody, melancholic, aggressive,
+   euphoric, whatever the user actually says) must be expressed through
+   the requested genre, not layered on top of it as an independent
+   instruction.** Applied to "melodic dubstep," a dark/gloomy/melancholic
+   mood should stay melodic dubstep — minor key, heavier sub-bass,
+   moodier pads, a heavier drop — not drift toward a genre-mismatched
+   vocabulary (gothic, horror-score, dark ambient, doom) just because
+   that vocabulary matches the mood word better in isolation. This
+   includes implied harmonic character, not just instrumentation: an
+   upbeat EDM request stays upbeat EDM regardless of which mood word is
+   layered onto it — don't let any mood word pull the caption toward
+   e.g. death-metal or gothic-doom harmony (dissonant, tritone-heavy,
+   dirge-like) that doesn't belong in the requested genre. Lead the
+   caption with the actual genre/subgenre tags, then add mood/production
+   tags idiomatic *within* that genre — if unsure what a given mood
+   sounds like inside a given genre, describe the concrete musical
+   mechanism (minor key, sparser arrangement, slower attack, heavier low
+   end) instead of reaching for whichever adjective the user used. Use
+   your own knowledge of what each genre's chords/harmony actually sound
+   like; no per-genre or per-word rules are spelled out here on purpose.
 3. If a real artist is named as the style target, never put their name in
    `caption`/`lyrics` — translate their sound into descriptive genre/
    production/vocal-style language instead. This server does not clone a
