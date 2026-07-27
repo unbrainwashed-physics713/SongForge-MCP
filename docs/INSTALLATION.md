@@ -149,7 +149,18 @@ ask "Configure Claude Desktop for SongForge-MCP? (y/n)" near the end of
 the run) — say yes and skip to [First run](#first-run) below. If you said
 no, are using a different MCP client, or just want to do it by hand:
 add this server to Claude Desktop's MCP configuration, pointing at the
-executable created inside this project's own `.venv`:
+executable created inside this project's own `.venv`.
+
+**Windows only, if you installed Claude Desktop from the Microsoft
+Store:** its config file is not at the usual `%APPDATA%\Claude` path —
+Store apps run sandboxed and redirect their own AppData to a virtualized
+per-package folder. The real file is under
+`%LOCALAPPDATA%\Packages\Claude_<hash>\LocalCache\Roaming\Claude\claude_desktop_config.json`
+(`install.bat` detects and handles this automatically; only relevant if
+editing by hand). Editing the normal `%APPDATA%\Claude` path on a
+Store install produces a valid file that Claude Desktop simply never
+reads, with no error to indicate anything went wrong — confirmed the
+hard way.
 
 ```json
 {

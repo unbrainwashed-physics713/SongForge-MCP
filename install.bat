@@ -91,7 +91,24 @@ REM ---- Step 7: Configure Claude Desktop ----
 echo.
 echo Configuring Claude Desktop...
 
-set "CONFIG_DIR=%APPDATA%\Claude"
+REM Claude Desktop installed via the Microsoft Store runs in an app
+REM container that redirects its own AppData\Roaming to a virtualized
+REM per-package folder under LOCALAPPDATA\Packages - a config file written
+REM to the normal %APPDATA%\Claude path is silently never read in that case
+REM (confirmed the hard way: writing a valid config there did nothing,
+REM because the Store-sandboxed app was never looking at that path to begin
+REM with). Detect which install this actually is before writing anywhere.
+set "CONFIG_DIR="
+for /d %%D in ("%LOCALAPPDATA%\Packages\Claude_*") do (
+    if exist "%%D\LocalCache\Roaming\Claude" set "CONFIG_DIR=%%D\LocalCache\Roaming\Claude"
+)
+if "%CONFIG_DIR%"=="" (
+    set "CONFIG_DIR=%APPDATA%\Claude"
+    echo Detected standard Claude Desktop install.
+) else (
+    echo Detected Microsoft Store Claude Desktop install ^(sandboxed config path^).
+)
+
 set "CONFIG_FILE=%CONFIG_DIR%\claude_desktop_config.json"
 set "SONGFORGE_EXE=%~dp0.venv\Scripts\songforge-mcp.exe"
 
