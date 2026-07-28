@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Correction to the entry below, from watching a real timeout happen
+  live via ACE-Step's own log:** raising this server's own polling
+  ceiling to 1800s does not fix this failure mode on its own. The
+  actual error was `TimeoutError: Music generation timed out after 600
+  seconds` raised from *inside ACE-Step's own code*
+  (`generate_music_execute.py`) — a hardcoded internal watchdog
+  entirely separate from this server's `Timeouts.GENERATION`, which it
+  fires well before regardless of what that's set to. Real numbers from
+  the live log: `batch=2, steps=50, duration=251.0s` — `Batch Size` had
+  been left at ACE-Step's own default of 2 (generating two full songs
+  at once, roughly doubling compute) and duration was confirmed unset
+  (`"original was None/unset"` in the log), so ACE-Step's own CoT step
+  picked 251s from the long lyrics. Per-step diffusion time was ~7.5x
+  slower than a comparable successful generation as a result. Added an
+  instruction requiring both `"Audio Duration (seconds)"` (~180-240)
+  *and* `"Batch Size": 1` to be set explicitly on every call unless the
+  user asks otherwise — this is the real fix; the timeout increase
+  below is still reasonable to keep as a generous outer ceiling, but
+  was never sufficient by itself.
 - **Diagnosed a real "Timed out — GPU ran out of steam" complaint** on a
   full-length song with long lyrics. Not a bug: this project's GPU sits
   in the 12-16GB tier ACE-Step's own `GPU_COMPATIBILITY.md` documents as
