@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Diagnosed a real "Timed out — GPU ran out of steam" complaint** on a
+  full-length song with long lyrics. Not a bug: this project's GPU sits
+  in the 12-16GB tier ACE-Step's own `GPU_COMPATIBILITY.md` documents as
+  "marginal" for the XL DiT model this server uses, requiring real CPU
+  offload — that tier still permits requesting up to 8-minute songs, and
+  long lyrics add further LM/conditioning work on top of an already
+  offload-slowed tier. The generation timeout was a flat 900s regardless
+  of requested duration (confirmed in code — no scaling logic existed at
+  all), and was only ever validated against short/typical clips.
+  Raised to 1800s and documented the real reasoning. Paired with a new
+  instruction defaulting `"Audio Duration (seconds)"` to ~3-4 minutes
+  unless the user explicitly asks for longer, and requiring a heads-up
+  before honoring a longer request, so long waits aren't mistaken for a
+  hang and short requests aren't needlessly slow by defaulting to "Auto".
 - **Diagnosed a real "it just stopped" complaint on a live `split_vocal_stems`
   call via Claude Desktop's own MCP server logs, not speculation.** The
   logs (`mcp-server-songforge.log`) showed the calling model genuinely

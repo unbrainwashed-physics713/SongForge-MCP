@@ -109,6 +109,16 @@ happens in conversation with the user before any tool call.
    deviation), say so plainly and offer to regenerate rather than
    presenting a mismatched result as a finished deliverable and leaving
    the user to catch it by ear.
+5.6. **Default `"Audio Duration (seconds)"` to roughly 3-4 minutes
+   (~180-240) via `advanced_settings` unless the user explicitly asks
+   for something longer or shorter — don't leave it on ACE-Step's own
+   "Auto".** Longer requested durations are real hardware cost, not
+   just a bigger number: this project's GPU sits in a tier ACE-Step's
+   own docs mark as needing CPU offload for the model this server uses,
+   and long lyrics compound that further. If the user does ask for a
+   longer song, that's fine to honor (this GPU's tier supports up to
+   ~8 minutes), but say plainly that it will take noticeably longer to
+   generate before starting, so a long wait isn't mistaken for a hang.
 6. Only split out the vocal if the user explicitly asks for it — never
    automatically. The full mix is the default deliverable. When you do
    need the stems, **prefer `generate_vocal_track(..., split_stems=True)`

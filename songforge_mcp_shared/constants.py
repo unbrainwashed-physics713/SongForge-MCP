@@ -101,12 +101,24 @@ class GradioServer:
 
 
 class Timeouts:
-    # ACE-Step generation time varies a lot: ~10-100s for a short clip with
-    # no reference audio, but reference-audio generations were observed
-    # taking up to ~9 minutes in testing (falls back to a slower non-flash-
-    # attention backend). Generous ceiling, not a tuned value.
+    # ACE-Step generation time varies a lot, and not just with luck: a
+    # real "timed out" complaint traced back to a genuine, documented
+    # hardware constraint, not a bug. ACE-Step's own GPU_COMPATIBILITY.md
+    # places this project's 12-16GB VRAM tier as "marginal" for the XL
+    # DiT model this server uses - it requires real CPU offload +
+    # quantization on this tier, and that tier still permits requesting
+    # up to 8-minute songs. Long lyrics push toward longer requested
+    # durations and more LM/lyric-conditioning work, both of which add
+    # real time on a tier that's already trading speed for VRAM fit via
+    # offloading - this compounds, it doesn't just add a little. 900s
+    # was measured against short/typical clips (~10-100s with no
+    # reference audio, ~9 min observed with reference audio) and never
+    # validated against a long-lyrics full-length song on this specific
+    # tier - raised to give real headroom for that documented case.
+    # Still a generous ceiling chosen by reasoning about known
+    # constraints, not a precisely tuned/benchmarked value.
     SERVER_STARTUP = 300.0
-    GENERATION = 900.0
+    GENERATION = 1800.0
     YOUTUBE_DOWNLOAD = 120.0
     # Separation is a short, independent operation (~5-15s observed) - kept
     # apart from GENERATION so a stuck separator doesn't silently wait 15
