@@ -109,23 +109,31 @@ happens in conversation with the user before any tool call.
    deviation), say so plainly and offer to regenerate rather than
    presenting a mismatched result as a finished deliverable and leaving
    the user to catch it by ear.
-5.6. **Set both `"Audio Duration (seconds)"` (~180-240, i.e. 3-4 minutes)
-   and `"Batch Size": 1` explicitly via `advanced_settings` on every
-   call, unless the user asks for something different (a longer song,
-   or more than one candidate take) — never leave either on ACE-Step's
-   own "Auto"/default.** This is not a style preference, it's a real,
-   confirmed failure mode: a generation with duration left unset and
-   `Batch Size` left at ACE-Step's own default of 2 (generating two
-   full songs at once, roughly doubling compute) hit **ACE-Step's own
-   internal 600-second generation timeout** — a hard limit inside
-   ACE-Step's own code, separate from and not fixed by this server's
-   own (much longer) polling ceiling. Long lyrics push ACE-Step's own
-   auto-duration decision even higher, compounding the problem. If the
-   user does want a longer song or multiple takes, that's fine to
-   honor (this GPU's tier supports up to ~8 minutes single-take), but
-   say plainly beforehand that it will take noticeably longer and may
-   need retrying if it hits ACE-Step's internal ceiling — that ceiling
-   is not something this server can configure around.
+5.6. **Set `"Audio Duration (seconds)"` (~180-240, i.e. 3-4 minutes)
+   explicitly via `advanced_settings` on every call, unless the user
+   asks for a longer song — never leave it on ACE-Step's own "Auto".**
+   This is not a style preference, it's a real, confirmed failure mode:
+   a generation with duration left unset hit **ACE-Step's own internal
+   600-second generation timeout** — a hard limit inside ACE-Step's own
+   code, separate from and not fixed by this server's own (much longer)
+   polling ceiling. Long lyrics push ACE-Step's own auto-duration
+   decision even higher, compounding the problem. If the user does want
+   a longer song, that's fine to honor (this GPU's tier supports up to
+   ~8 minutes single-take), but say plainly beforehand that it will
+   take noticeably longer and may need retrying if it hits ACE-Step's
+   internal ceiling — that ceiling is not something this server can
+   configure around.
+
+   (`Batch Size` does NOT need to be set here — this server now forces
+   it to 1 in code, not via instruction, after a real incident where a
+   generation was caught still running ACE-Step's own default of 2, two
+   full takes per request, even after this instruction file had already
+   been updated to require `Batch Size: 1` and Claude Desktop had been
+   restarted. An instruction the calling model has to remember on every
+   call is not reliable enough for something this costly to get wrong —
+   only pass `"Batch Size"` in `advanced_settings` if the user explicitly
+   asks for more than one candidate take and accepts it taking roughly
+   that many times longer.)
 6. Only split out the vocal if the user explicitly asks for it — never
    automatically. The full mix is the default deliverable. When you do
    need the stems, **prefer `generate_vocal_track(..., split_stems=True)`
@@ -337,3 +345,9 @@ instrumental stems. For a custom arrangement built around just the vocal, use
 `split_vocal_stems` and build the rest elsewhere (e.g. in a connected
 DAW-control MCP server) — don't treat the generated mix as a finished
 master, and don't do that building-out unless the user asked for it.
+
+A completed `generate_vocal_track` already auto-plays its result in
+Windows Media Player — you don't need to tell the user to go find the
+file to listen to it. If they say it didn't play, wasn't visible, or
+ask to hear an earlier result again, call `play_audio(audio_path)`
+directly rather than just repeating the file path back to them.

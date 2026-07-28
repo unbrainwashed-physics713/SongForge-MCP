@@ -162,6 +162,30 @@ real audio file), `SEPARATOR_NOT_CONFIGURED` (see
 [`docs/INSTALLATION.md`](INSTALLATION.md)), `SUBPROCESS_TIMEOUT`,
 `SEPARATION_FAILED`.
 
+## `play_audio(audio_path) -> dict`
+
+Plays a file this server previously produced, on demand. A completed
+`generate_vocal_track` already auto-plays its result via the OS's own
+default app for the file type (Media Player on Windows) — this tool is
+the fallback for when that didn't work or wasn't seen, or for replaying
+an earlier result later in the conversation.
+
+**Arguments**
+
+- `audio_path` *(required)* — a file this server previously produced.
+  Must resolve inside this server's own output folder, same restriction
+  as `split_vocal_stems`' `audio_path` above.
+
+**Returns**
+
+```json
+{"status": "playing", "audio_path": "C:\\...\\renders\\....wav"}
+```
+
+**Raises** `SongForgeMCPError` — `FILE_NOT_FOUND`, `INVALID_PARAMETER`
+(path exists but isn't inside this server's output folder, or isn't a
+real audio file).
+
 ## Example request
 
 > "Write me an original melodic dubstep track in the style of Illenium —

@@ -11,7 +11,14 @@ import songforge_mcp.tools as tools_package
 logger = logging.getLogger(__name__)
 
 _EXPECTED_MODULES = frozenset(
-    {"generate_tools", "separate_tools", "analysis_tools", "midi_tools", "voice_reference_tools"}
+    {
+        "generate_tools",
+        "separate_tools",
+        "analysis_tools",
+        "midi_tools",
+        "voice_reference_tools",
+        "playback_tools",
+    }
 )
 
 

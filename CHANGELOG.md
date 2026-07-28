@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Added auto-play for completed generations**, plus a new `play_audio`
+  tool for on-demand replay. Real reported problem: a completed
+  generation only flashed in the taskbar instead of appearing on screen.
+  First attempt launched `wmplayer.exe` (classic Windows Media Player)
+  directly with a best-effort foreground-forcing workaround, on the
+  theory that the OS default-app path was the cause — **live testing
+  then found `wmplayer.exe` creates zero visible windows at all on
+  Windows 11** (confirmed via a full window enumeration by PID); Windows
+  11 replaced it with a modern "Media Player" app that plain
+  `os.startfile()` already opens correctly and visibly. Reverted to the
+  simple default-app approach (`open_with_default_app`) before shipping
+  the wmplayer-specific version, which would have been a regression. New
+  `play_audio(audio_path)` tool covers the case where auto-play still
+  doesn't work or the user wants to replay an earlier result.
 - **Correction to the entry below, from watching a real timeout happen
   live via ACE-Step's own log:** raising this server's own polling
   ceiling to 1800s does not fix this failure mode on its own. The

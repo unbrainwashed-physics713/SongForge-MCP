@@ -3,9 +3,9 @@ import asyncio
 from mcp.server.fastmcp import Context, FastMCP
 
 from songforge_mcp.acestep_client import ACEStepClient
+from songforge_mcp.media_player import play_audio_now
 from songforge_mcp.shared_state import jobs as _jobs, separator_client as _separator_client
 from songforge_mcp.youtube_reference import YouTubeReferenceClient
-from songforge_mcp_shared.constants import open_with_default_app
 from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
 from songforge_mcp_shared.protocol import (
     measure_wav_duration_seconds,
@@ -213,7 +213,7 @@ def register(mcp: FastMCP):
                     job.result["instrumental_path"] = stems["instrumental_path"]
 
                 try:
-                    open_with_default_app(result["audio_path"])
+                    play_audio_now(result["audio_path"])
                 except Exception:
                     # Best-effort convenience, not the actual deliverable -
                     # the real file path is already in job.result regardless

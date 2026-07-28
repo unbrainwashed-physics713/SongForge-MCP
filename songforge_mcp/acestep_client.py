@@ -758,10 +758,19 @@ class ACEStepClient:
                     )
                     await page.wait_for_timeout(6000)
 
-                if advanced_settings:
-                    for label, value in advanced_settings.items():
-                        await self._set_field_by_label(page, label, value)
-                    await page.wait_for_timeout(500)
+                # Batch Size defaults to ACE-Step's own "2" (two full takes
+                # generated per request) unless overridden. Relying on the
+                # calling LLM to remember to pass "Batch Size": 1 in
+                # advanced_settings every time was confirmed unreliable in
+                # production (a live generation was caught still running
+                # batch_size=2 after the instructions had already been
+                # updated and Claude Desktop restarted) - so it's forced
+                # here in code instead. An explicit advanced_settings value
+                # still wins, for a future multi-take feature.
+                effective_settings = {"Batch Size": 1, **(advanced_settings or {})}
+                for label, value in effective_settings.items():
+                    await self._set_field_by_label(page, label, value)
+                await page.wait_for_timeout(500)
 
                 if on_progress:
                     await on_progress(0.0, "Submitting generation request")

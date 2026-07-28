@@ -134,7 +134,7 @@ def test_generate_vocal_track_job_completes_and_status_reports_it(monkeypatch):
 
     opened = []
     monkeypatch.setattr(generate_tools._client, "generate", fake_generate)
-    monkeypatch.setattr(generate_tools, "open_with_default_app", opened.append)
+    monkeypatch.setattr(generate_tools, "play_audio_now", opened.append)
 
     async def scenario():
         result = await gen_tool.fn(caption="melodic dubstep", lyrics="[verse]\nwords", ctx=_StubContext())
@@ -164,7 +164,7 @@ def test_generate_vocal_track_split_stems_includes_stem_paths_in_completion(monk
     monkeypatch.setattr(generate_tools._client, "generate", fake_generate)
     monkeypatch.setattr(generate_tools._separator_client, "separate", fake_separate)
     monkeypatch.setattr(generate_tools, "measure_wav_duration_seconds", lambda path: 30.0)
-    monkeypatch.setattr(generate_tools, "open_with_default_app", opened.append)
+    monkeypatch.setattr(generate_tools, "play_audio_now", opened.append)
 
     async def scenario():
         result = await gen_tool.fn(
@@ -195,7 +195,7 @@ def test_generate_vocal_track_still_completes_if_auto_launch_fails(monkeypatch):
 
     monkeypatch.setattr(generate_tools._client, "generate", fake_generate)
     monkeypatch.setattr(generate_tools, "measure_wav_duration_seconds", lambda path: 30.0)
-    monkeypatch.setattr(generate_tools, "open_with_default_app", failing_open)
+    monkeypatch.setattr(generate_tools, "play_audio_now", failing_open)
 
     async def scenario():
         result = await gen_tool.fn(caption="melodic dubstep", lyrics="[verse]\nwords", ctx=_StubContext())
