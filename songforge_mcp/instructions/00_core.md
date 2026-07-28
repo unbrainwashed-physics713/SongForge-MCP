@@ -231,7 +231,20 @@ fit it) was tried and does not work reliably:
 None of this applies within a single Custom-mode generation — vocals and
 instrumental share one beat grid natively.
 
-**Recommended path for a from-scratch song plus an editable DAW start**:
+**A plain request to generate a track is complete once the track is
+generated — full stop.** Don't proactively split stems, transcribe to
+MIDI, or import/arrange anything in a DAW just because a DAW-control
+MCP server (Reaper, or any other — Pro Tools, Cubase, whatever the user
+actually has connected) happens to also be available in this session.
+Having the capability to chain into another tool is not the same as
+being asked to. Everything below this point is a recommended path for
+when the user *has* asked to build out an editable DAW project from a
+generated song — treat that as the trigger condition for all of it,
+not "a DAW-control server is connected" or "we did this earlier in the
+conversation."
+
+**Recommended path for a from-scratch song plus an editable DAW start**
+(only once the user has actually asked for this):
 `generate_vocal_track` (Custom mode) → `split_vocal_stems` for the
 instrumental → `transcribe_instrumental_to_midi`. That tool returns FOUR
 MIDI files: a flat transcription (`midi_path`, every note layered
@@ -239,11 +252,12 @@ together — not usable as a DAW starting point on its own) plus a
 heuristic split into `bass_midi_path`/`melody_midi_path`/
 `chords_midi_path` (by pitch register and note-overlap density — not
 real instrument classification, but genuinely separate, assignable
-parts). **Neither this tool's own result nor Reaper's own MIDI tools
-expose real note content from an external file — only a path and a note
-count.** If asked to recreate, describe, or import a transcribed MIDI
-file's actual notes anywhere (including into Reaper via note-by-note
-tools rather than a direct file import), call `get_midi_notes(midi_path)`
+parts). **Neither this tool's own result nor a DAW-control MCP server's
+own MIDI tools expose real note content from an external file — only a
+path and a note count.** If asked to recreate, describe, or import a
+transcribed MIDI file's actual notes anywhere (including into a DAW via
+note-by-note tools rather than a direct file import), call
+`get_midi_notes(midi_path)`
 first to get real pitch/start/end/velocity data. Without it, there is no
 real data to work from — attempting to reconstruct the notes anyway
 produces fabricated content, not the real transcription, which has
@@ -251,14 +265,15 @@ happened and is a real, confirmed failure mode, not a hypothetical one.
 `get_midi_notes` is paginated (`offset`/`max_results`, default 500) since
 a real transcription can have hundreds of notes.
 
-**Import the three split tracks as separate Reaper tracks, not
-the flat one.** Importing audio/MIDI into an actual Reaper project (e.g.
-via `reaper-mcp`) happens one level up, in whatever session has both
-servers available — not this server's job, and this server has no way to
-enforce it: before importing anything into Reaper, check what you've
-already imported earlier in this same conversation (and, if reaper-mcp
-offers a way to inspect the project's existing tracks, check that too)
-rather than assuming nothing exists yet. Every generate/split/transcribe
+**If importing into a DAW, use the three split tracks as separate
+tracks, not the flat one.** Importing audio/MIDI into an actual DAW
+project (via whatever DAW-control MCP server is connected — Reaper,
+or another) happens one level up, in whatever session has both servers
+available — not this server's job, and this server has no way to
+enforce it: before importing anything, check what you've already
+imported earlier in this same conversation (and, if that server offers
+a way to inspect the project's existing tracks, check that too) rather
+than assuming nothing exists yet. Every generate/split/transcribe
 tool in this server is idempotent — calling one again on a file already
 processed returns the same real result instantly rather than redoing
 the work — specifically so that re-checking before importing is always
@@ -267,7 +282,8 @@ cheap, never a reason to skip the check.
 **Every path this server returns (`audio_path`, `midi_path`, `vocals_path`,
 `instrumental_path`) is already a real, absolute Windows path, resolved on
 the machine this server runs on — use that exact string directly as the
-argument to another tool (e.g. `reaper-mcp`'s import).** Never scan a
+argument to another tool (e.g. a DAW-control MCP server's import).**
+Never scan a
 folder or list directory contents to "find" the file instead of using the
 value already returned to you — this has repeatedly produced wrong
 results, including picking up unrelated leftover files from an entirely
@@ -311,5 +327,6 @@ by-product of a successful generation.
 real file paths plus diagnostics — never inline audio. A completed job
 gives the full mix; `split_vocal_stems` returns separated vocal/
 instrumental stems. For a custom arrangement built around just the vocal, use
-`split_vocal_stems` and build the rest elsewhere (e.g. via reaper-mcp) —
-don't treat the generated mix as a finished master.
+`split_vocal_stems` and build the rest elsewhere (e.g. in a connected
+DAW-control MCP server) — don't treat the generated mix as a finished
+master, and don't do that building-out unless the user asked for it.
