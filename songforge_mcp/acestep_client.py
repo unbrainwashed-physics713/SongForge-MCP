@@ -432,28 +432,82 @@ class ACEStepClient:
                 await field.check(timeout=5000)
             else:
                 await field.uncheck(timeout=5000)
+            actual = await field.is_checked()
+            if actual != value:
+                raise SongForgeMCPError(
+                    ErrorCode.SYNTHESIS_FAILED,
+                    f"advanced setting {label!r} did not take effect - set to {value!r} "
+                    f"but the field now reads {actual!r}",
+                )
             return
         try:
             await field.select_option(str(value), timeout=3000)
+            await ACEStepClient._verify_field_value(field, label, value)
             return
+        except SongForgeMCPError:
+            raise
         except Exception:
             pass
         try:
             await field.fill(str(value), timeout=5000)
+            await ACEStepClient._verify_field_value(field, label, value)
             return
+        except SongForgeMCPError:
+            raise
         except Exception:
             pass
         # Gradio Radio groups render as separate labeled inputs rather than
         # a single fillable/selectable element - fall back to clicking the
         # specific option whose own text matches the requested value.
         try:
-            await page.get_by_label(str(value), exact=True).first.check(timeout=5000)
+            radio_option = page.get_by_label(str(value), exact=True).first
+            await radio_option.check(timeout=5000)
+            if not await radio_option.is_checked():
+                raise SongForgeMCPError(
+                    ErrorCode.SYNTHESIS_FAILED,
+                    f"advanced setting {label!r} did not take effect - clicked the "
+                    f"{value!r} option but it did not end up checked",
+                )
+        except SongForgeMCPError:
+            raise
         except Exception as e:
             raise SongForgeMCPError(
                 ErrorCode.INVALID_PARAMETER,
                 f"could not set advanced setting {label!r} to {value!r} - tried fill, "
                 f"select, and radio-check, all failed: {e}",
             ) from e
+
+    @staticmethod
+    async def _verify_field_value(field, label: str, expected) -> None:
+        """Reads a field back after fill()/select_option() and confirms the
+        value actually stuck, instead of trusting a non-throwing call as
+        success. Real, confirmed bug class this guards against: a Gradio
+        combobox (e.g. the Track Name dropdown during Extract-mode
+        testing) where .fill() succeeds by typing into the filter input
+        without ever registering a real backend selection - the UI looks
+        right but the value silently never applied. Numeric values get a
+        tolerant float comparison since Gradio number inputs commonly
+        reformat ("150" -> "150.0"); text comparison is case-insensitive
+        since ACE-Step may normalize casing internally without that being
+        a real failure."""
+        try:
+            actual = await field.input_value(timeout=3000)
+        except Exception:
+            return  # not a value-bearing input (e.g. a button) - nothing to verify
+
+        expected_str = str(expected).strip()
+        if actual.strip().lower() == expected_str.lower():
+            return
+        try:
+            if abs(float(actual) - float(expected_str)) < 1e-6:
+                return
+        except ValueError:
+            pass
+        raise SongForgeMCPError(
+            ErrorCode.SYNTHESIS_FAILED,
+            f"advanced setting {label!r} did not take effect - set to {expected!r} but "
+            f"the field now reads {actual!r}",
+        )
 
     @staticmethod
     async def _set_output_format(page, output_format: str) -> None:

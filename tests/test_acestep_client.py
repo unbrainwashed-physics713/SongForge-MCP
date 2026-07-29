@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 
@@ -13,6 +14,166 @@ from songforge_mcp.acestep_client import (
     _trim_reference_for_key_coherence,
 )
 from songforge_mcp_shared import constants
+from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
+
+
+class _FakeLocator:
+    """Minimal async stand-in for a Playwright Locator - just the methods
+    _set_field_by_label actually calls."""
+
+    def __init__(self, *, count=1, visible=True, value="", checked=False,
+                 raise_on_select_option=True, raise_on_fill=False,
+                 fill_is_cosmetic=False):
+        self._count = count
+        self._visible = visible
+        self._value = value
+        self._checked = checked
+        self._raise_on_select_option = raise_on_select_option
+        self._raise_on_fill = raise_on_fill
+        # Simulates the real confirmed bug: fill() succeeds (doesn't
+        # throw) but only types into a combobox's filter input without
+        # ever registering a real backend selection - the field's real
+        # value never actually changes.
+        self._fill_is_cosmetic = fill_is_cosmetic
+
+    @property
+    def first(self):
+        return self
+
+    async def count(self):
+        return self._count
+
+    async def is_visible(self):
+        return self._visible
+
+    async def click(self, timeout=None):
+        pass
+
+    async def select_option(self, value, timeout=None):
+        if self._raise_on_select_option:
+            raise Exception("not a native <select>")
+        self._value = value
+
+    async def fill(self, value, timeout=None):
+        if self._raise_on_fill:
+            raise Exception("fill() failed")
+        if not self._fill_is_cosmetic:
+            self._value = value
+
+    async def input_value(self, timeout=None):
+        return self._value
+
+    async def check(self, timeout=None):
+        if self._count == 0:
+            raise Exception("no element matches this locator")
+        self._checked = True
+
+    async def uncheck(self, timeout=None):
+        if self._count == 0:
+            raise Exception("no element matches this locator")
+        self._checked = False
+
+    async def is_checked(self):
+        return self._checked
+
+
+class _FakePage:
+    """Minimal stand-in for a Playwright Page - looks up a locator by
+    whatever key (label text or placeholder text) it's asked for from a
+    single dict, matching how the real page resolves either."""
+
+    def __init__(self, fields: dict):
+        self._fields = fields
+
+    def get_by_label(self, label, exact=True):
+        return self._fields.get(label, _FakeLocator(count=0))
+
+    def get_by_placeholder(self, placeholder, exact=True):
+        return self._fields.get(placeholder, _FakeLocator(count=0))
+
+    def get_by_role(self, role, name=None, exact=False):
+        return _FakeLocator(count=1, visible=True)
+
+
+def test_set_field_by_label_fill_path_verifies_successfully():
+    field = _FakeLocator(count=1, visible=True, value="")
+    page = _FakePage({"LM Temperature": field})
+    asyncio.run(ACEStepClient._set_field_by_label(page, "LM Temperature", "1.1"))
+    assert asyncio.run(field.input_value()) == "1.1"
+
+
+def test_set_field_by_label_raises_when_fill_is_cosmetic_only():
+    # The exact confirmed bug class: fill() doesn't throw, but the field's
+    # real value never actually changes (a Gradio combobox filter input
+    # scenario) - must be caught, not silently trusted as success. Uses
+    # the real "Key" field specifically, since it's looked up by its
+    # placeholder text rather than its label (a pre-existing special
+    # case - "Key"'s real accessible name is broken, concatenated with
+    # its tooltip), and this is the exact field behind the real incident
+    # that motivated this fix.
+    field = _FakeLocator(count=1, visible=True, value="", fill_is_cosmetic=True)
+    placeholder = ACEStepClient._PLACEHOLDER_FALLBACK_FOR_LABEL["Key"]
+    page = _FakePage({placeholder: field})
+    with pytest.raises(SongForgeMCPError) as exc_info:
+        asyncio.run(ACEStepClient._set_field_by_label(page, "Key", "F Minor"))
+    assert exc_info.value.code == ErrorCode.SYNTHESIS_FAILED
+    assert "Key" in exc_info.value.message
+    assert "F Minor" in exc_info.value.message
+
+
+def test_set_field_by_label_numeric_tolerant_comparison():
+    # Gradio number inputs commonly reformat ("150" -> "150.0") - this
+    # must not be treated as a failed verification.
+    field = _FakeLocator(count=1, visible=True, value="150.0")
+
+    async def fake_fill(value, timeout=None):
+        field._value = "150.0"
+
+    field.fill = fake_fill
+    page = _FakePage({"BPM (Beats Per Minute)": field})
+    asyncio.run(ACEStepClient._set_field_by_label(page, "BPM (Beats Per Minute)", 150))
+
+
+def test_set_field_by_label_boolean_path_verifies_successfully():
+    field = _FakeLocator(count=1, visible=True, checked=False)
+    page = _FakePage({"Use LoRA": field})
+    asyncio.run(ACEStepClient._set_field_by_label(page, "Use LoRA", True))
+    assert asyncio.run(field.is_checked()) is True
+
+
+def test_set_field_by_label_raises_when_checkbox_does_not_actually_toggle():
+    field = _FakeLocator(count=1, visible=True, checked=False)
+    field.check = lambda timeout=None: asyncio.sleep(0)  # never actually flips _checked
+    page = _FakePage({"Use LoRA": field})
+    with pytest.raises(SongForgeMCPError) as exc_info:
+        asyncio.run(ACEStepClient._set_field_by_label(page, "Use LoRA", True))
+    assert exc_info.value.code == ErrorCode.SYNTHESIS_FAILED
+
+
+def test_set_field_by_label_radio_fallback_verifies_successfully():
+    main_field = _FakeLocator(count=1, visible=True, raise_on_select_option=True, raise_on_fill=True)
+    radio_option = _FakeLocator(count=1, visible=True, checked=False)
+    page = _FakePage({
+        "Inference Method": main_field,
+        "SDE": radio_option,
+    })
+    asyncio.run(ACEStepClient._set_field_by_label(page, "Inference Method", "SDE"))
+    assert asyncio.run(radio_option.is_checked()) is True
+
+
+def test_set_field_by_label_raises_when_radio_option_not_found():
+    main_field = _FakeLocator(count=1, visible=True, raise_on_select_option=True, raise_on_fill=True)
+    page = _FakePage({"Inference Method": main_field})
+    with pytest.raises(SongForgeMCPError) as exc_info:
+        asyncio.run(ACEStepClient._set_field_by_label(page, "Inference Method", "SDE"))
+    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
+
+
+def test_set_field_by_label_raises_when_label_not_found_at_all():
+    page = _FakePage({})
+    with pytest.raises(SongForgeMCPError) as exc_info:
+        asyncio.run(ACEStepClient._set_field_by_label(page, "Nonexistent Field", "value"))
+    assert exc_info.value.code == ErrorCode.INVALID_PARAMETER
 
 
 def _write_tone(path, duration_seconds, samplerate=48000):

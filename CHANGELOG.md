@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **Fixed a real, confirmed bug class in `_set_field_by_label`: every
+  `advanced_settings` write (fill, select, checkbox, radio-fallback) was
+  treated as successful whenever the underlying Playwright call didn't
+  throw an exception, with zero verification that the value actually
+  took effect.** This is the same bug already found once this session in
+  a one-off Extract-mode test (a Gradio combobox's `.fill()` typed into
+  the filter input without ever registering a real backend selection) -
+  turns out the production code path used for every `generate_vocal_track`
+  call via `advanced_settings` had the identical gap, never caught before
+  because nothing ever read a field back after setting it. Concretely,
+  this means every prior "ACE-Step's Key/BPM soft hints are unreliable,
+  even when set explicitly" conclusion in this project (including two
+  real measured major/minor mode-flips) was reached without ever
+  confirming our own automation actually set the field in the first
+  place - it's now genuinely unknown which explanation was true until
+  this fix ships and a new mismatch (if any) is measured again. Now reads
+  every field back after writing it (`.input_value()`/`.is_checked()`)
+  and raises `SYNTHESIS_FAILED` if the value didn't actually stick,
+  instead of silently reporting success. Numeric comparisons are
+  float-tolerant and text comparisons are case-insensitive, since Gradio
+  commonly reformats/normalizes values cosmetically without that being a
+  real failure. Covered by 8 new tests using a lightweight fake
+  Playwright Locator/Page harness.
 - **Added instruction guidance for two real, reported quality complaints,
   neither confirmed fixed by a listening test yet:**
   (1) songs losing energy/staying flat across verse→chorus instead of

@@ -117,18 +117,26 @@ happens in conversation with the user before any tool call.
    `advanced_settings` (e.g. `{"BPM (Beats Per Minute)": 150, "Key": "F minor"}`)
    — don't rely on caption prose alone ("dark", "minor-key feel") to get
    there; ACE-Step doesn't reliably infer tempo/key from mood language.**
-   Even then, treat the result as unverified: ACE-Step's `Key`/`BPM`
-   fields are soft hints, not hard constraints, and have been observed
+   Even then, treat the result as unverified: `Key`/`BPM` are soft hints
+   to ACE-Step's own model, not hard constraints, and have been observed
    landing on a completely different key/mode (not just an adjacent one)
-   even when set explicitly — a real, measured case, not a hypothetical.
-   Once a job completes, call `analyze_reference_audio` on the finished
-   `audio_path` and compare its measured `bpm`/`key`/`mode` against what
-   was actually intended **before** telling the user it's done. If they
-   don't reasonably match (especially a major/minor mismatch — this
-   flips the entire emotional character of a track, not a minor
-   deviation), say so plainly and offer to regenerate rather than
-   presenting a mismatched result as a finished deliverable and leaving
-   the user to catch it by ear.
+   even when this server confirmed the field was set correctly — a real,
+   measured case, not a hypothetical. (This server now verifies every
+   `advanced_settings` field actually took effect before generation
+   starts — reading it back and raising an error if it didn't stick —
+   rather than silently trusting the write, closing a real gap where
+   that wasn't previously checked at all. If `generate_vocal_track`
+   itself raises an error mentioning a specific setting "did not take
+   effect," that's this check catching a genuine automation problem —
+   say so plainly rather than retrying blind.) Once a job completes,
+   call `analyze_reference_audio` on the finished `audio_path` and
+   compare its measured `bpm`/`key`/`mode` against what was actually
+   intended **before** telling the user it's done. If they don't
+   reasonably match (especially a major/minor mismatch — this flips the
+   entire emotional character of a track, not a minor deviation), say so
+   plainly and offer to regenerate rather than presenting a mismatched
+   result as a finished deliverable and leaving the user to catch it by
+   ear.
 5.6. **Set `"Audio Duration (seconds)"` (~180-240, i.e. 3-4 minutes)
    explicitly via `advanced_settings` on every call, unless the user
    asks for a longer song — never leave it on ACE-Step's own "Auto".**
