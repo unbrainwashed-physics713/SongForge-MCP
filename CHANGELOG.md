@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Set up PyPI publishing** — `songforge-mcp` is now buildable/publishable
+  as a real package (added `[project.urls]` and `classifiers` to
+  `pyproject.toml`, verified with `twine check`), with a
+  `mcp-name: io.github.xDarkzx/songforge-mcp` marker in the README for
+  MCP Registry ownership verification. Added
+  `.github/workflows/publish.yml`, which builds and publishes to PyPI
+  automatically on every GitHub Release via PyPI's trusted-publisher
+  (OIDC) flow — no API token stored as a repo secret. Documented the
+  one-time PyPI-side trusted-publisher setup and the release process in
+  `CONTRIBUTING.md`. `docs/INSTALLATION.md` now mentions `pip install
+  songforge-mcp` as an alternative to cloning for the server package
+  itself (ACE-Step/separator setup still needs the installer scripts
+  either way).
 - **Added `SONGFORGE_ACESTEP_CHECKPOINT` env var** so a different ACE-Step
   checkpoint (`acestep-v15-turbo`, `acestep-v15-base`) can be used instead
   of the default `acestep-v15-xl-sft`, previously hardcoded. Deliberately

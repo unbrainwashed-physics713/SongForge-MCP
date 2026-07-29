@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.xDarkzx/songforge-mcp -->
 <h1 align="center">SongForge-MCP</h1>
 
 <p align="center">

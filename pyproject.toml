@@ -26,6 +26,23 @@ dependencies = [
     "basic-pitch>=0.4.0",
     "psutil>=7.0.0",
 ]
+keywords = ["mcp", "model-context-protocol", "claude", "ace-step", "music-generation", "ai-music"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Sound/Audio :: Sound Synthesis",
+]
+
+[project.urls]
+Homepage = "https://github.com/xDarkzx/SongForge-MCP"
+Repository = "https://github.com/xDarkzx/SongForge-MCP"
+Issues = "https://github.com/xDarkzx/SongForge-MCP/issues"
+Changelog = "https://github.com/xDarkzx/SongForge-MCP/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

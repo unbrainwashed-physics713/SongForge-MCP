@@ -56,6 +56,30 @@ Repo layout mirrors `Reaper-MCP`'s conventions — see
 - Describe what your change does and why.
 - Update `CHANGELOG.md` under the current unreleased section.
 
+## Releasing (maintainers only)
+
+`songforge-mcp` is published to [PyPI](https://pypi.org/project/songforge-mcp/).
+Publishing is automated via `.github/workflows/publish.yml`, which
+builds and uploads to PyPI whenever a GitHub Release is published — no
+manual `twine upload` needed, and no PyPI API token stored as a repo
+secret (uses [PyPI's trusted publishing](https://docs.pypi.org/trusted-publishers/),
+OIDC-based).
+
+**One-time setup, done once on PyPI's own site, not in this repo:** on
+the project's PyPI page (or via a "pending publisher" if the project
+doesn't exist on PyPI yet), add a trusted publisher pointing at:
+- Repository owner: `xDarkzx`
+- Repository name: `SongForge-MCP`
+- Workflow filename: `publish.yml`
+- Environment name: `pypi`
+
+To cut a release:
+1. Bump `version` in `pyproject.toml`.
+2. Update `CHANGELOG.md` — move the `Unreleased` entries under a new
+   version heading.
+3. Commit, push, then create a GitHub Release with a matching tag
+   (e.g. `v0.3.0`). Publishing the release triggers the workflow.
+
 ## Reporting issues
 
 Open an issue on GitHub with:

@@ -77,6 +77,15 @@ Creates `.venv` in this folder and installs `songforge-mcp` along with
 its dependencies (`mcp`, `playwright`, `yt-dlp`), then downloads the
 Chromium browser Playwright needs.
 
+`songforge-mcp` is also published on [PyPI](https://pypi.org/project/songforge-mcp/) —
+`pip install songforge-mcp` is an option if you'd rather not clone this
+repo just for the server package itself (e.g. managing it inside your
+own existing Python environment). This doesn't replace the rest of this
+installer, though: ACE-Step 1.5 and the separator environment (steps 4-5
+below) are separate checkouts this package doesn't bundle, and still
+need to be set up either way — the installer scripts remain the
+recommended path for a first install.
+
 ### 4. ACE-Step 1.5
 
 If `SONGFORGE_ACESTEP_HOME` isn't already set, the installer clones
