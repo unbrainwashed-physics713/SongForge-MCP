@@ -30,6 +30,19 @@ duplicated, in much more verbose form, warnings already covered in
 `00_core.md`. Trimmed to state the same facts (what's risky, what to do)
 without re-narrating the investigation that established them.
 
+### Update (2026-07-29): 5 new tools added
+
+`generate_vocal_track_takes`, `list_generated_tracks`, `list_recent_jobs`,
+`delete_generated_track`, and `edit_audio_track` were added (from a full
+codebase security/bug audit's suggestions — see CHANGELOG). Re-measured
+the same way: **13 tools, 24,430 chars (~6,107 tokens)** — up from the
+5-tool "After" figure above, as expected from real new functionality,
+not doc bloat. Each new tool's docstring was kept in the same
+conclusions-not-narration style established above rather than measured
+and trimmed after the fact; worth re-measuring again if the tool count
+grows further, to catch any docstring that's crept back toward
+over-explaining.
+
 ## What was done
 
 1. **Trimmed every tool's docstring and `00_core.md`** to state

@@ -198,15 +198,21 @@ exist, deliberately different in strictness:
   It does **not** restrict which directory the file lives in — pointing
   at a personal sample library anywhere on disk is the legitimate use
   case this parameter exists for.
-- **`audio_path`** (`split_vocal_stems`) — `validate_output_dir_audio_path`
+- **`audio_path`** (`split_vocal_stems`, `play_audio`,
+  `delete_generated_track`, `edit_audio_track`) — `validate_output_dir_audio_path`
   applies the same checks, plus one more: the resolved path must live
   inside `Paths.OUTPUT_DIR`, the folder this server itself writes
-  generated audio into. There's no legitimate reason for this parameter
-  to point anywhere else — its only real input is a file
-  `generate_vocal_track` (or a prior `split_vocal_stems` call) already
-  produced — so a calling model (whether misled by a manipulated prompt
-  or simply given a wrong path) cannot make this server read or process
-  arbitrary files elsewhere on the filesystem.
+  generated audio into. There's no legitimate reason for these
+  parameters to point anywhere else — their only real input is a file
+  `generate_vocal_track` (or a prior `split_vocal_stems`/`edit_audio_track`
+  call) already produced — so a calling model (whether misled by a
+  manipulated prompt or simply given a wrong path) cannot make this
+  server read, play, edit, or delete arbitrary files elsewhere on the
+  filesystem. `delete_generated_track` layers a further restriction of
+  its own on top: it never actually erases anything, only moves the file
+  into a `.trash` subfolder — deliberately reversible, since a calling
+  model being wrong about what's safe to remove should never be able to
+  permanently destroy a generation.
 
 Both tools also return their audio inline as MCP `AudioContent` (via
 FastMCP's `Audio` helper) rather than only a file path string, so the
