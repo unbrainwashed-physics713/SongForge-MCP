@@ -619,7 +619,7 @@ class ACEStepClient:
     ) -> dict:
         """Drive ACE-Step's Gradio UI to generate one song. `lora_path`,
         if given, loads a trained LoRA/LoKr adapter (e.g. a directory like
-        `.../lokr_output/heather_sommer_v2/final`) before generating, and
+        `.../lokr_output/my_voice_v2/final`) before generating, and
         enables it via ACE-Step's own "Use LoRA" toggle — loading alone
         does not apply it. `song_title`,
         if given, is slugified into the output filename (e.g. "Hearts on
