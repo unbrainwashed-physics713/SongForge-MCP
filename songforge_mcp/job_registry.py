@@ -48,6 +48,11 @@ class JobRegistry:
     def get(self, job_id: str) -> Job | None:
         return self._jobs.get(job_id)
 
+    def list_all(self) -> list[Job]:
+        """Newest first - matches the order a caller almost always wants
+        ("what have I got running/just finished"), not insertion order."""
+        return sorted(self._jobs.values(), key=lambda job: job.created_at, reverse=True)
+
     def _evict_old_jobs(self) -> None:
         """Drops finished/errored jobs older than the retention window.
         Never evicts a "running" job regardless of age - only a completed

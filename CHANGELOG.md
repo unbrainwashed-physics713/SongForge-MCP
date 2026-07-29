@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+- **Added 5 new tools** from a full codebase audit's suggestions:
+  `generate_vocal_track_takes` (2-5 sequential takes with different
+  seeds, each measured via the same BPM/key analysis
+  `analyze_reference_audio` uses, so results can actually be compared),
+  `list_generated_tracks` and `list_recent_jobs` (browse what's on disk/
+  in the job registry when a `job_id` has been lost — a real problem hit
+  earlier this project when an orphaned generation had to be manually
+  matched to a job ID via log-grepping), `delete_generated_track`, and
+  `edit_audio_track` (trim/fade/format-convert). `delete_generated_track`
+  deliberately moves files to a `.trash` subfolder rather than actually
+  erasing them — raised directly during review: deletion is hard to
+  reverse, and a calling model (or a manipulated/injected instruction)
+  being wrong about what's safe to remove should never be able to
+  permanently destroy a generation. `edit_audio_track`'s mp3 output
+  shells out to `ffmpeg` (soundfile can only write wav/flac directly) —
+  this project already implicitly depended on `ffmpeg` for YouTube
+  reference downloads, now documented as a real requirement in
+  `docs/INSTALLATION.md` instead of an unstated one.
+- **Security fix: `_extract_video_id` (youtube_reference.py) accepted any
+  URL whose text happened to match a YouTube-shaped pattern (e.g.
+  `?v=<11 chars>`), with no check that the URL's actual host was
+  YouTube.** A URL like `https://evil.example/x?v=aaaaaaaaaaa` extracted
+  a "video ID" and passed validation, and the *raw* URL (not a
+  reconstructed youtube.com one) was then handed straight to `yt-dlp` —
+  which supports 1000+ site extractors with their own history of
+  extractor-specific vulnerabilities. Reachable via three public tool
+  parameters: `reference_youtube_url`, `remix_source_youtube_url`, and
+  `prepare_voice_reference`'s `youtube_url`. Fixed by parsing the URL and
+  requiring an exact host match against youtube.com/www.youtube.com/
+  m.youtube.com/youtu.be before any ID pattern is even attempted. Found
+  via a full security/bug audit of the codebase; everything else checked
+  (path traversal, subprocess argument construction, LoRA loading,
+  concurrent-generation locking, browser cleanup on exceptions) was
+  confirmed already correct, not just assumed clean.
 - **Added auto-play for completed generations**, plus a new `play_audio`
   tool for on-demand replay. Real reported problem: a completed
   generation only flashed in the taskbar instead of appearing on screen.

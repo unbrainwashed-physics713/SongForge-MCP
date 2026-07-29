@@ -1,8 +1,10 @@
 import asyncio
+import random
 
 from mcp.server.fastmcp import Context, FastMCP
 
 from songforge_mcp.acestep_client import ACEStepClient
+from songforge_mcp.audio_analysis import analyze_audio
 from songforge_mcp.media_player import play_audio_now
 from songforge_mcp.shared_state import jobs as _jobs, separator_client as _separator_client
 from songforge_mcp.youtube_reference import YouTubeReferenceClient
@@ -14,6 +16,9 @@ from songforge_mcp_shared.protocol import (
     validate_lyrics,
     validate_output_format,
 )
+
+_MIN_TAKES = 2
+_MAX_TAKES = 5
 
 _client = ACEStepClient()
 _youtube_client = YouTubeReferenceClient()
@@ -274,3 +279,152 @@ def register(mcp: FastMCP):
             return [{"status": "error", "error": job.error}]
 
         return [{"status": "complete", **job.result}]
+
+    @mcp.tool(structured_output=False)
+    async def generate_vocal_track_takes(
+        caption: str,
+        lyrics: str,
+        ctx: Context,
+        num_takes: int = 3,
+        reference_audio_path: str | None = None,
+        reference_youtube_url: str | None = None,
+        advanced_settings: dict | None = None,
+        output_format: str = "wav",
+        song_title: str | None = None,
+    ) -> dict:
+        """Starts generating multiple independent takes of the same song
+        (same caption/lyrics, a different random seed each time) so a
+        result can be picked from several rather than accepting whatever
+        the first one produced. Runs sequentially, not in parallel —
+        this server's GPU is a single shared resource, and running takes
+        concurrently would recreate the exact contention problem that
+        made ACE-Step's own default Batch Size (2 simultaneous takes) a
+        real, measured cause of generations silently taking far longer
+        (see this server's CHANGELOG). Takes num_takes times as long as
+        a single generate_vocal_track call — say so before calling this
+        unless the user has already explicitly asked for multiple takes.
+
+        Returns {"job_id": str} immediately; poll
+        check_vocal_track_status(job_id) exactly as for
+        generate_vocal_track (same tool, same registry).
+
+        Args:
+            caption: Same as generate_vocal_track.
+            lyrics: Same as generate_vocal_track.
+            num_takes: How many independent takes to generate (2-5,
+                capped to prevent an accidentally very long request).
+            reference_audio_path: Same as generate_vocal_track, applied
+                identically to every take.
+            reference_youtube_url: Same as generate_vocal_track.
+            advanced_settings: Same as generate_vocal_track, applied to
+                every take — except "Seed", which this tool always
+                overrides per take regardless of what's passed here,
+                since varied results are the entire point.
+            output_format: Same as generate_vocal_track, applied to
+                every take.
+            song_title: Base title for every take — each take's actual
+                filename gets a take number appended.
+
+        On completion, check_vocal_track_status returns {"takes": [...]}
+        — one entry per take, in order: {"audio_path", "seed",
+        "diagnostics" (same shape as generate_vocal_track's), "measured":
+        {"bpm", "key", "mode", "key_confidence"} from actually analyzing
+        that take's output}. A take that individually fails is recorded
+        as {"seed", "error"} instead — one bad take does not fail the
+        whole job.
+        """
+        validate_caption(caption)
+        validate_lyrics(lyrics)
+        output_format = validate_output_format(output_format)
+        if not (_MIN_TAKES <= num_takes <= _MAX_TAKES):
+            raise SongForgeMCPError(
+                ErrorCode.VALUE_OUT_OF_RANGE,
+                f"num_takes must be between {_MIN_TAKES} and {_MAX_TAKES}, got {num_takes}",
+            )
+        if reference_audio_path and reference_youtube_url:
+            raise SongForgeMCPError(
+                ErrorCode.INVALID_PARAMETER,
+                "provide only one of reference_audio_path or reference_youtube_url, not both",
+            )
+        if reference_audio_path:
+            reference_audio_path = validate_audio_file_path(
+                reference_audio_path, param_name="reference_audio_path"
+            )
+
+        job = _jobs.create()
+
+        async def report(fraction: float, message: str) -> None:
+            job.progress = fraction
+            job.message = message
+            try:
+                await ctx.report_progress(progress=fraction, total=1.0, message=message)
+            except Exception:
+                pass
+
+        async def run_job() -> None:
+            try:
+                resolved_reference_path = reference_audio_path
+                if reference_youtube_url:
+                    await report(0.0, f"Downloading reference audio from {reference_youtube_url}")
+                    resolved_reference_path = await asyncio.to_thread(
+                        _youtube_client.download, reference_youtube_url
+                    )
+
+                takes = []
+                for i in range(num_takes):
+                    await report(i / num_takes, f"Generating take {i + 1} of {num_takes}")
+                    seed = random.randint(1, 2_147_483_647)
+                    per_take_settings = {**(advanced_settings or {}), "Seed": str(seed)}
+                    take_title = f"{song_title} (take {i + 1})" if song_title else None
+                    try:
+                        result = await _client.generate(
+                            caption=caption,
+                            lyrics=lyrics,
+                            reference_audio_path=resolved_reference_path,
+                            advanced_settings=per_take_settings,
+                            output_format=output_format,
+                            remix_source_path=None,
+                            remix_strength=0.5,
+                            remix_melody_retention=None,
+                            remix_no_fsq=False,
+                            song_title=take_title,
+                            lora_path=None,
+                            on_progress=None,
+                        )
+                        duration = (
+                            measure_wav_duration_seconds(result["audio_path"])
+                            if result["audio_path"].endswith(".wav")
+                            else None
+                        )
+                        measured = await asyncio.to_thread(analyze_audio, result["audio_path"])
+                        takes.append(
+                            {
+                                "audio_path": result["audio_path"],
+                                "seed": seed,
+                                "diagnostics": {
+                                    "generation_seconds": result["generation_seconds"],
+                                    "duration_seconds": duration,
+                                    "used_reference_audio": resolved_reference_path is not None,
+                                    "output_format": output_format,
+                                },
+                                "measured": measured,
+                            }
+                        )
+                    except SongForgeMCPError as e:
+                        takes.append({"seed": seed, "error": f"[{e.code.name}] {e.message}"})
+                    except Exception as e:
+                        takes.append({"seed": seed, "error": f"{type(e).__name__}: {e}"})
+
+                job.result = {"takes": takes}
+                job.progress = 1.0
+                job.message = "All takes complete"
+                job.status = "complete"
+            except SongForgeMCPError as e:
+                job.error = f"[{e.code.name}] {e.message}"
+                job.status = "error"
+            except Exception as e:
+                job.error = f"{type(e).__name__}: {e}"
+                job.status = "error"
+
+        asyncio.create_task(run_job())
+        return {"job_id": job.id}

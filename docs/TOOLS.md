@@ -186,6 +186,76 @@ an earlier result later in the conversation.
 (path exists but isn't inside this server's output folder, or isn't a
 real audio file).
 
+## `generate_vocal_track_takes(caption, lyrics, num_takes=3, reference_audio_path=None, reference_youtube_url=None, advanced_settings=None, output_format="wav", song_title=None) -> dict`
+
+Same as `generate_vocal_track`, but runs `num_takes` (2-5) independent
+generations sequentially, each with its own random seed, and measures
+each result with the same analysis `analyze_reference_audio` uses (BPM,
+key, mode) so results can actually be compared rather than just picking
+whichever one finished first. Runs sequentially, not in parallel — this
+server's GPU is a single shared resource, and this project has already
+measured what happens when generations contend for it (see CHANGELOG).
+Takes roughly `num_takes` times as long as a single generation.
+
+**Returns** `{"job_id": str}` — poll `check_vocal_track_status` exactly
+as for `generate_vocal_track`. On completion, returns `{"takes": [...]}`,
+one entry per take in order: `{"audio_path", "seed", "diagnostics", "measured": {"bpm", "key", "mode", "key_confidence"}}`.
+A take that individually fails is recorded as `{"seed", "error"}` instead
+— one bad take doesn't fail the whole job.
+
+**Raises** `SongForgeMCPError` — same as `generate_vocal_track`, plus
+`VALUE_OUT_OF_RANGE` if `num_takes` isn't between 2 and 5.
+
+## `list_generated_tracks(limit=50) -> list[dict]`
+
+Lists finished tracks sitting in this server's output folder, newest
+first — for when a past generation's `job_id` has been lost (jobs are
+in-memory only and don't survive a server restart) or you want to see
+what's already been made. Doesn't include split-out stems, only full-mix
+renders.
+
+**Returns** a list of `{"path", "filename", "size_bytes", "modified_at", "duration_seconds"}` (duration is best-effort, `None` if it couldn't be read).
+
+## `list_recent_jobs(limit=20) -> list[dict]`
+
+Lists recent background jobs from any of this server's job-based tools,
+newest first — for when a `job_id` has been lost mid-conversation.
+
+**Returns** a list of `{"job_id", "status", "progress", "message", "created_at"}`
+— call `check_vocal_track_status` for a job's full result.
+
+## `delete_generated_track(audio_path) -> dict`
+
+Moves a file this server previously produced into a `.trash` subfolder —
+**not a permanent delete.** Deliberately reversible: a calling model (or
+a manipulated/injected instruction) being wrong about what's safe to
+remove should never be able to permanently destroy a generation. To
+actually reclaim disk space, empty `.trash` yourself via File Explorer —
+there's no tool for that, on purpose.
+
+**Returns** `{"status": "moved_to_trash", "audio_path": ..., "trash_path": ...}`.
+
+**Raises** `SongForgeMCPError` — `FILE_NOT_FOUND`, `INVALID_PARAMETER`
+(path outside the output folder).
+
+## `edit_audio_track(audio_path, trim_start_seconds=None, trim_end_seconds=None, fade_in_seconds=None, fade_out_seconds=None, output_format=None) -> dict`
+
+Starts trimming and/or fading a file this server previously produced.
+Writes a **new** file — never overwrites the original. `output_format`
+is `"wav"`, `"flac"`, or `"mp3"` (defaults to the source file's own
+format if it's one of these three, otherwise `"wav"`); mp3 output
+requires `ffmpeg` on PATH (see `docs/INSTALLATION.md`), since soundfile
+can only write wav/flac directly.
+
+**Returns** `{"job_id": str}` — poll `check_vocal_track_status` exactly
+as for `generate_vocal_track`. On completion, returns `{"audio_path", "duration_seconds", "output_format"}`.
+
+**Raises** `SongForgeMCPError` — `FILE_NOT_FOUND`, `INVALID_PARAMETER`
+(path outside the output folder, unsupported `output_format`),
+`VALUE_OUT_OF_RANGE` (trim range outside the file's duration, fades
+longer than the trimmed clip), `SUBPROCESS_FAILED`/`SUBPROCESS_TIMEOUT`
+(mp3 conversion via ffmpeg).
+
 ## Example request
 
 > "Write me an original melodic dubstep track in the style of Illenium —

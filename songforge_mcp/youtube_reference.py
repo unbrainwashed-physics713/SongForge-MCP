@@ -15,9 +15,12 @@ itself.
 import os
 import re
 import subprocess
+from urllib.parse import urlparse
 
 from songforge_mcp_shared.constants import Paths, Timeouts, ensure_private_dir, no_window_popen_kwargs
 from songforge_mcp_shared.error_codes import ErrorCode, SongForgeMCPError
+
+_ALLOWED_YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
 
 _VIDEO_ID_PATTERNS = (
     re.compile(r"[?&]v=([A-Za-z0-9_-]{11})"),
@@ -27,6 +30,18 @@ _VIDEO_ID_PATTERNS = (
 
 
 def _extract_video_id(url: str) -> str | None:
+    # Host allowlist first - the ID patterns below only match against the
+    # URL's structure (?v=, /shorts/, etc.), not its domain, so without
+    # this check "https://evil.example/x?v=aaaaaaaaaaa" would extract a
+    # video ID and get passed straight to yt-dlp, which supports 1000+
+    # site extractors far beyond YouTube (a real SSRF / arbitrary-fetch
+    # primitive, confirmed live during a security review, not theoretical).
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return None
+    if host not in _ALLOWED_YOUTUBE_HOSTS:
+        return None
     for pattern in _VIDEO_ID_PATTERNS:
         match = pattern.search(url)
         if match:

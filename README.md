@@ -187,6 +187,11 @@ tool reference and more example requests.
 | `get_midi_notes` | Returns real pitch/timing/velocity note data from a transcribed MIDI file — paginated for large transcriptions |
 | `play_audio` | Plays a previously generated file on demand (a completed generation already auto-plays; this is the fallback/replay option) |
 | `prepare_voice_reference` | Builds a named library of reference vocal clips (from a local file or YouTube) for consistent style-matching across generations |
+| `generate_vocal_track_takes` | Generates 2-5 independent takes of the same song (different seed each time) and measures each one's BPM/key so you can actually compare and pick, instead of accepting whatever the first attempt produced |
+| `list_generated_tracks` | Lists finished tracks already sitting in the output folder, newest first — for when a `job_id` has been lost |
+| `list_recent_jobs` | Lists recent background jobs across every tool here, newest first — same reason as above |
+| `delete_generated_track` | Moves a file to a `.trash` subfolder — reversible by design, not a permanent delete |
+| `edit_audio_track` | Trims and/or fades a previously generated file, optionally converting format, writing a new file without touching the original |
 
 **Reference-audio style matching** — point a generation at a specific
 vocal sample or a YouTube link, and the result adopts that voice's
@@ -254,12 +259,14 @@ SongForge-MCP/
 │   ├── instructions/
 │   │   └── 00_core.md              # System-prompt instructions injected into MCP
 │   └── tools/                      # One module per tool group, auto-registered
-│       ├── generate_tools.py       # generate_vocal_track, check_vocal_track_status
+│       ├── generate_tools.py       # generate_vocal_track(_takes), check_vocal_track_status
 │       ├── separate_tools.py       # split_vocal_stems
 │       ├── analysis_tools.py       # analyze_reference_audio
 │       ├── midi_tools.py           # transcribe_instrumental_to_midi, get_midi_notes
 │       ├── playback_tools.py       # play_audio
-│       └── voice_reference_tools.py # prepare_voice_reference
+│       ├── voice_reference_tools.py # prepare_voice_reference
+│       ├── track_management_tools.py # list_generated_tracks, list_recent_jobs, delete_generated_track
+│       └── audio_edit_tools.py     # edit_audio_track
 ├── songforge_mcp_shared/
 │   ├── constants.py                # Paths, timeouts, safety limits
 │   ├── error_codes.py              # SongForgeMCPError + ErrorCode enum

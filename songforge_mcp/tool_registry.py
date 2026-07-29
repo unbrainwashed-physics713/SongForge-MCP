@@ -18,6 +18,8 @@ _EXPECTED_MODULES = frozenset(
         "midi_tools",
         "voice_reference_tools",
         "playback_tools",
+        "track_management_tools",
+        "audio_edit_tools",
     }
 )
 

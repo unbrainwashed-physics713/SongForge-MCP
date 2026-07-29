@@ -124,6 +124,10 @@ class Timeouts:
     # apart from GENERATION so a stuck separator doesn't silently wait 15
     # minutes before reporting a problem.
     SEPARATION = 180.0
+    # edit_audio_track's mp3 path shells out to ffmpeg for the one format
+    # soundfile/libsndfile can't write directly - a few minutes of audio
+    # transcodes in well under this on any real hardware.
+    FFMPEG_CONVERT = 120.0
 
 
 MAX_CAPTION_LENGTH = 1000     # characters

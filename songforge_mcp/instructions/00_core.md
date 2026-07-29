@@ -346,8 +346,21 @@ instrumental stems. For a custom arrangement built around just the vocal, use
 DAW-control MCP server) — don't treat the generated mix as a finished
 master, and don't do that building-out unless the user asked for it.
 
-A completed `generate_vocal_track` already auto-plays its result in
-Windows Media Player — you don't need to tell the user to go find the
-file to listen to it. If they say it didn't play, wasn't visible, or
-ask to hear an earlier result again, call `play_audio(audio_path)`
-directly rather than just repeating the file path back to them.
+A completed `generate_vocal_track` already auto-plays its result in the
+OS's own default media player — you don't need to tell the user to go
+find the file to listen to it. If they say it didn't play, wasn't
+visible, or ask to hear an earlier result again, call
+`play_audio(audio_path)` directly rather than just repeating the file
+path back to them.
+
+If a `job_id` has been lost (a prior job's result was never captured, or
+the server restarted since it completed — jobs don't survive that), use
+`list_recent_jobs` to find a matching job or `list_generated_tracks` to
+find the actual file directly, rather than telling the user the result
+is gone. Only `generate_vocal_track_takes` when the user has actually
+asked for multiple options to choose between — it takes roughly as many
+times longer as the number of takes requested, so don't default to it
+for an ordinary request. `delete_generated_track` moves a file to
+`.trash` rather than erasing it — safe to use when the user explicitly
+asks to remove something, but still confirm which file before calling
+it, since it acts on whatever path it's given.
