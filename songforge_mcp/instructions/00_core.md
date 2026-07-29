@@ -54,6 +54,26 @@ happens in conversation with the user before any tool call.
    end) instead of reaching for whichever adjective the user used. Use
    your own knowledge of what each genre's chords/harmony actually sound
    like; no per-genre or per-word rules are spelled out here on purpose.
+
+   **ACE-Step has no chord-progression input at all** (confirmed — grepped
+   its entire codebase, the only matches for "chord" are false positives
+   like "harpsichord") **and `caption` is one single style description
+   applied to the whole song, not per-section** — so a caption that only
+   names a genre/mood gives the model no signal that energy should differ
+   between sections, and a real, reported failure mode is a song that
+   stays at roughly the same intensity throughout instead of building
+   from a restrained verse to a bigger chorus. Counter this two ways when
+   the genre calls for a dynamic arc (most rock/pop/EDM structures do):
+   (a) describe the arc explicitly in `caption` prose itself — e.g.
+   "verses sparse and restrained, pre-chorus builds tension, chorus
+   explodes with full energy" — not just a static genre/mood tag list;
+   (b) annotate lyrics structure tags with a short inline energy/
+   instrumentation cue instead of leaving them bare, e.g. `[verse - soft,
+   sparse, clean guitar]` / `[pre-chorus - building, adding drums]` /
+   `[chorus - heavy, distorted, full energy]`. Neither is confirmed by a
+   listening test in this project yet — treat as the best available lever
+   given no chord/structure control exists, not a guaranteed fix, and
+   listen to the result before telling the user the dynamic arc is right.
 3. If a real artist is named as the style target, never put their name in
    `caption`/`lyrics` — translate their sound into descriptive genre/
    production/vocal-style language instead. This server does not clone a
@@ -134,6 +154,30 @@ happens in conversation with the user before any tool call.
    only pass `"Batch Size"` in `advanced_settings` if the user explicitly
    asks for more than one candidate take and accepts it taking roughly
    that many times longer.)
+5.7. **If the user reports that several generations in a row feel
+   samey/repetitive (same cadence, same rhythmic feel, "too safe"), that
+   is a different problem from the within-song energy-arc issue above —
+   it's about variety *between* takes, not the arc *within* one song —
+   and has its own separate levers, all via `advanced_settings`:**
+   - `"Inference Method": "SDE"` (default is `"ODE"`) — ACE-Step's own
+     docs literally say "Try SDE if ODE results feel too safe." Adds real
+     stochastic variation to the diffusion process itself, not just the
+     seed.
+   - `"LM Temperature"` raised from the default `0.85` toward `1.0-1.1` —
+     the 5Hz LM generates the rhythm/timing plan before any audio exists,
+     so more LM creativity should mean more varied phrasing/cadence, not
+     just varied melody.
+   - `"LM Codes Strength"` lowered from the default `1.0` toward `0.7-0.9`
+     — this is "what fraction of DiT denoising steps follow the LM's
+     rhythmic plan as guidance." At 1.0 the diffusion stage rigidly
+     reproduces that plan; lowering it gives the DiT room to reinterpret
+     it, which can add variety even when the LM's own plan is similar
+     across takes.
+   None of these three are confirmed by a listening test in this project
+   yet — they're ACE-Step's own documented purpose for each setting, not
+   a verified fix here. Mention that plainly if suggesting them, and
+   prefer testing one change at a time (e.g. via
+   `generate_vocal_track_takes`) over changing all three blind.
 6. Only split out the vocal if the user explicitly asks for it — never
    automatically. The full mix is the default deliverable. When you do
    need the stems, **prefer `generate_vocal_track(..., split_stems=True)`

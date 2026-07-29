@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **Added instruction guidance for two real, reported quality complaints,
+  neither confirmed fixed by a listening test yet:**
+  (1) songs losing energy/staying flat across verse→chorus instead of
+  building — since ACE-Step has no chord-progression input at all
+  (confirmed, grepped the whole codebase) and `caption` is one global
+  style description for the entire song, the only available levers are
+  describing the dynamic arc explicitly in `caption` prose and annotating
+  lyrics structure tags with inline energy/instrumentation cues (e.g.
+  `[chorus - heavy, distorted, full energy]` instead of bare `[chorus]`);
+  (2) multiple generations in a row feeling same-cadence/"too safe" —
+  addressed via three independent `advanced_settings` levers per ACE-Step's
+  own documentation: `"Inference Method": "SDE"` (adds real diffusion-
+  stage stochasticity, not just seed variation), raised `"LM Temperature"`
+  (more creative rhythm/timing choices from the 5Hz LM), and lowered
+  `"LM Codes Strength"` (lets the DiT reinterpret the LM's rhythmic plan
+  rather than rigidly reproducing it). Explicitly flagged in the
+  instructions as unverified-by-listening-test, not a guaranteed fix.
+
 ## 0.3.0
 
 - **Set up PyPI publishing** — `songforge-mcp` is now buildable/publishable
