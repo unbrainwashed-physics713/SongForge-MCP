@@ -110,6 +110,18 @@ git clone https://github.com/xDarkzx/SongForge-MCP.git
 cd SongForge-MCP
 ```
 
+**Option C:** Already have Python? Install the published package straight from PyPI:
+```bash
+pip install songforge-mcp
+```
+This gives you the `songforge-mcp` command directly — but it only installs
+this server itself, not ACE-Step 1.5 or the separator environment (the
+PyPI package deliberately doesn't bundle either, since ACE-Step's ~28GB
+checkpoint and its own dependency stack aren't something a Python package
+install should silently pull in). You'll still need to run the installer
+below (or follow [`docs/INSTALLATION.md`](docs/INSTALLATION.md) manually)
+to set those up and point `SONGFORGE_ACESTEP_HOME` at a real checkout.
+
 ### 2. Run the installer
 
 **Windows:** either double-click `install.bat` in File Explorer, or — if you're already in a terminal from the `git clone` step above — just keep going in the same window:
@@ -298,6 +310,7 @@ SongForge-MCP/
 | Claude Desktop doesn't see SongForge-MCP | Restart Claude Desktop after installing/editing config. On Windows, note that a **Microsoft Store** install of Claude Desktop uses a different, sandboxed config path than the usual `%APPDATA%\Claude` — `install.bat` detects this automatically, but if editing by hand, check `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json` too. |
 | A completed track doesn't visibly play | It auto-plays in your OS's default media player — on Windows, a window opened by a background process can flash in the taskbar instead of popping up, a Windows restriction, not a bug. Ask Claude to `play_audio` the file again, or check the taskbar. |
 | Generation seems unusually slow / times out | ACE-Step has its own internal generation timeout, separate from this server's. Very long lyrics or a long requested duration can push past it — ask for a shorter song (~3-4 minutes is the sweet spot) or fewer candidate takes. |
+| `"command not found: songforge-mcp"` | Run the installer again, or manually: `pip install -e .` from the repo folder, or `pip install songforge-mcp`. |
 
 ---
 
