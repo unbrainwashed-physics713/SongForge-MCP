@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0
+
 - **Set up PyPI publishing** — `songforge-mcp` is now buildable/publishable
   as a real package (added `[project.urls]` and `classifiers` to
   `pyproject.toml`, verified with `twine check`), with a

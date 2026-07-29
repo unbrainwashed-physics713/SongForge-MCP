@@ -9,7 +9,8 @@
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="License" /></a>
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple.svg" alt="MCP Compatible" /></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.0-orange.svg" alt="v0.2.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-orange.svg" alt="v0.3.0" /></a>
+  <a href="https://pypi.org/project/songforge-mcp/"><img src="https://img.shields.io/pypi/v/songforge-mcp.svg" alt="PyPI" /></a>
   <a href="https://github.com/xDarkzx/SongForge-MCP/actions/workflows/ci.yml"><img src="https://github.com/xDarkzx/SongForge-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://github.com/ace-step/ACE-Step-1.5"><img src="https://img.shields.io/badge/GPU-12GB%2B%20VRAM-red.svg" alt="GPU 12GB+ VRAM" /></a>
 </p>
