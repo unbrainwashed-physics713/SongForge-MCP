@@ -46,6 +46,16 @@ def test_gradio_server_url_matches_host_and_port():
     assert constants.GradioServer.URL == f"http://{constants.GradioServer.HOST}:{constants.GradioServer.PORT}"
 
 
+def test_gradio_server_checkpoint_defaults_to_xl_sft():
+    # Read once at process start, like Paths.ACESTEP_HOME and
+    # GradioServer.PORT - deliberately not meant to be hot-reloadable
+    # within a running process (see the CHECKPOINT constant's own
+    # comment: switching requires restarting this server), so this only
+    # checks the real default rather than round-tripping an env var
+    # override through a module reload.
+    assert constants.GradioServer.CHECKPOINT == "acestep-v15-xl-sft"
+
+
 def test_no_window_popen_kwargs_returns_dict():
     kwargs = constants.no_window_popen_kwargs()
     assert isinstance(kwargs, dict)

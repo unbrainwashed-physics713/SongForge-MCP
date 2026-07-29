@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Added `SONGFORGE_ACESTEP_CHECKPOINT` env var** so a different ACE-Step
+  checkpoint (`acestep-v15-turbo`, `acestep-v15-base`) can be used instead
+  of the default `acestep-v15-xl-sft`, previously hardcoded. Deliberately
+  a manual, restart-required config option, not a tool — switching
+  checkpoints means killing whatever generation is running and a
+  multi-GB download, which should never happen automatically or without
+  the user's direct say-so.
 - **Added 5 new tools** from a full codebase audit's suggestions:
   `generate_vocal_track_takes` (2-5 sequential takes with different
   seeds, each measured via the same BPM/key analysis

@@ -98,6 +98,16 @@ class GradioServer:
     HOST = "127.0.0.1"
     PORT = int(os.environ.get("SONGFORGE_ACESTEP_PORT", "7866"))
     URL = f"http://{HOST}:{PORT}"
+    # Which ACE-Step checkpoint to launch with - "acestep-v15-xl-sft" is
+    # this project's tested default (higher quality, what its own docs
+    # are written around). Deliberately a manual, restart-required env
+    # var rather than something this server can switch at runtime: a
+    # calling model changing this on its own would mean killing whatever
+    # generation is in progress and a multi-GB download with no user
+    # confirmation in between - a real, explicit decision the user makes
+    # themselves, not something automated. See docs/INSTALLATION.md for
+    # the other checkpoints ACE-Step supports and their tradeoffs.
+    CHECKPOINT = os.environ.get("SONGFORGE_ACESTEP_CHECKPOINT", "acestep-v15-xl-sft")
 
 
 class Timeouts:

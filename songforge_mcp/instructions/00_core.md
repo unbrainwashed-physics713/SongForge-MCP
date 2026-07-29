@@ -364,3 +364,14 @@ for an ordinary request. `delete_generated_track` moves a file to
 `.trash` rather than erasing it — safe to use when the user explicitly
 asks to remove something, but still confirm which file before calling
 it, since it acts on whatever path it's given.
+
+If the user asks about trying a different ACE-Step model (e.g. the
+faster `turbo` checkpoint, or `base` for its Extract/Lego/Complete
+modes) — there is no tool for this, on purpose. Explain that it's a
+manual, one-time setup step: set the `SONGFORGE_ACESTEP_CHECKPOINT`
+environment variable (see `docs/INSTALLATION.md`) and restart this
+server. Never suggest or imply that this server can switch or download
+a different checkpoint automatically — doing so would mean killing
+whatever generation is currently running and a multi-GB download with
+no confirmation step, which is exactly why this was deliberately left
+as something the user does themselves.

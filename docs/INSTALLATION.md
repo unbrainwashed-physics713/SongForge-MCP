@@ -127,11 +127,13 @@ find everything it just installed:
 | `SONGFORGE_SEPARATOR_PYTHON` | The separator environment's Python interpreter |
 | `SONGFORGE_YTDLP_PYTHON` | This server's own Python interpreter (yt-dlp is installed alongside it) |
 
-A fourth, optional one controls where generated tracks/stems are saved:
+Two more, optional, control output location and which ACE-Step
+checkpoint gets used:
 
 | Variable | Points to |
 |---|---|
 | `SONGFORGE_OUTPUT_DIR` *(optional)* | Where generated tracks and stems are saved. Defaults to an `output/` folder inside this repo checkout if unset — not the OS temp directory, since temp can be purged by system cleanup tools and isn't somewhere you'd think to look for a track you asked for and want to keep. Set this if you'd rather output land somewhere else (e.g. a personal music archive folder). |
+| `SONGFORGE_ACESTEP_CHECKPOINT` *(optional)* | Which ACE-Step model to load. Defaults to `acestep-v15-xl-sft` (this project's tested configuration — higher quality, needs more VRAM, see the requirements table above). Other real options include `acestep-v15-turbo` (faster, lower quality) and `acestep-v15-base` (slower, but the only one supporting ACE-Step's Extract/Lego/Complete modes — see [ACE-Step's own docs](https://github.com/ace-step/ACE-Step-1.5) for what those do). Changing this is a manual, deliberate choice — this server never switches or downloads a different checkpoint on its own, since that means killing whatever generation is running and a multi-GB download with no confirmation step in between. Set it, then restart this server (and Claude Desktop) for it to take effect — a not-yet-downloaded checkpoint downloads automatically on first use after that, the same way the default one does. |
 
 **Windows:** `install.bat` sets these as permanent user environment
 variables via `setx` automatically.

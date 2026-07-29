@@ -284,7 +284,7 @@ class ACEStepClient:
                             "--port", str(GradioServer.PORT),
                             "--server-name", GradioServer.HOST,
                             "--language", "en",
-                            "--config_path", "acestep-v15-xl-sft",
+                            "--config_path", GradioServer.CHECKPOINT,
                             "--lm_model_path", "acestep-5Hz-lm-0.6B",
                             "--init_service", "true",
                         ]
